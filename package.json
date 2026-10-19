@@ -1,0 +1,7 @@
+{
+  "name": "torre-de-controle-gr-parcerias",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Plataforma de acompanhamento dos pilotos da Torre de Controle (Cobli x GR Parcerias): Vercel + Supabase.",
+  "engines": { "node": "22.x" }
+}
