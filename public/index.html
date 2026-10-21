@@ -463,7 +463,7 @@ function normaliza(c){
 const setState=(t,err)=>{const e=$('#saveState');e.textContent=t;e.classList.toggle('err',!!err)};
 const salvando={},timers={};
 async function persist(id){
-  const c=get(id);if(!c||salvando[id])return;salvando[id]=true;
+  const c=get(id);if(!c)return;if(salvando[id]){agenda(id);return}salvando[id]=true;
   const logs=pendLogs[id]||[];pendLogs[id]=[];setState('Salvando…');
   try{
     const {_versao,_atualizadoEm,_atualizadoPor,...limpo}=c;
