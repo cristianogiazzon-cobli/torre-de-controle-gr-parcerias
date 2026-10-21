@@ -31,6 +31,14 @@ header .btn.ghost{color:#fff;border-color:rgba(255,255,255,.35)}
 .btn.green{background:var(--cgreen);color:var(--indigo);font-weight:600}.btn.green:hover{background:#0BD9AC}
 .btn.sm{padding:4px 10px;font-size:12px}
 .btn.danger{background:var(--red)}
+.sim-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.sim-g label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.sim-g input,.sim-g select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;box-sizing:border-box}
+.sim-tot{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+.sim-tot .kpi{flex:1;min-width:200px}
+.sim-tot .kpi.main{background:var(--indigo);color:#fff}.sim-tot .kpi.main .l,.sim-tot .kpi.main .n{color:#C9CBF0}
+td.num,th.num{text-align:right;white-space:nowrap}
+.dsc{color:#A32227}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
 .kpi .l{font-size:12px;color:var(--muted)}.kpi .v{font-size:26px;font-weight:600;margin-top:2px}.kpi .n{font-size:11px;color:var(--muted)}
@@ -161,6 +169,7 @@ td.gat select{min-width:118px}
 <nav id="nav">
   <button data-view="painel" class="on">Acompanhamento</button>
   <button data-view="pilotos">Pilotos (início e fim)</button>
+  <button data-view="precos">Tabela de preços</button>
   <button data-view="notif">Notificações Slack</button>
 </nav>
 <main id="main"><div class="empty">Carregando dados…</div></main>
@@ -420,18 +429,21 @@ let view='painel',filtro='Todos',busca='',fichaId=null,ganttAll=false,prev=null,
 const versoes={},pendLogs={};
 const get=id=>S.clientes.find(c=>c.id===id);
 const novoEvento=nome=>({evento:nome,monitorar:false,sev:'',gatilho:'',gOutro:false,acoes:[{t:'',g:''},{t:'',g:''},{t:'',g:''}]});
+const descVazio=()=>({video:{tipo:'pct',valor:0,motivo:''},tele:{tipo:'pct',valor:0,motivo:''},pos:{tipo:'pct',valor:0,motivo:''}});
 function novoCliente(nome,extra={}){return Object.assign({
   id:uid(),nome,status:'Onboarding',responsavel:'',canalSlack:'',
   hubspot:{link:'',id:'',empresa:nome,responsavel:'',potencial:'',regiao:''},
   equip:Object.fromEntries(EQUIPS.map(e=>[e,{qtd:0}])),instalacao:'',painel:'',one:[],
   eventos:EVENTOS_BASE.map(novoEvento),velocidade:[],frota:{todos:false,tipo:'',placas:''},grupos:[],
-  inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:''},extra)}
+  inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:'',desconto:descVazio()},extra)}
 const LEGADO=['etapas','matriz','sideLetter','ultimoRepasse','usuarios','acesso','escopo','limiar','tolerancia','criticidadeConfirmada','frotaQtd','frotaIncompleta','modalidade','veiculos','precoManual','cnpj','liberadoComPendencias'];
 function normaliza(c){
   const b=novoCliente(c.nome||'');
   Object.keys(b).forEach(k=>{if(c[k]===undefined)c[k]=b[k]});
   ['hubspot','frota'].forEach(k=>Object.keys(b[k]).forEach(s=>{if(c[k][s]===undefined)c[k][s]=b[k][s]}));
   EQUIPS.forEach(e=>{if(!c.equip[e])c.equip[e]={qtd:0}});
+  if(!c.desconto||typeof c.desconto!=='object')c.desconto=descVazio();
+  ['video','tele','pos'].forEach(k=>{if(!c.desconto[k])c.desconto[k]={tipo:'pct',valor:0,motivo:''}});
   if(!Array.isArray(c.eventos)||!c.eventos.length)c.eventos=b.eventos;
   c.eventos.forEach(e=>{while(e.acoes.length<3)e.acoes.push({t:'',g:''});delete e.notificar;if(e.gOutro===undefined)e.gOutro=false});
   c.grupos.forEach(g=>{if(!Array.isArray(g.pessoas))g.pessoas=[];if(g.objetivo===undefined)g.objetivo=''});
@@ -460,13 +472,77 @@ async function persist(id){
 const agenda=id=>{clearTimeout(timers[id]);timers[id]=setTimeout(()=>persist(id),700)};
 function touch(c,log){if(log)(pendLogs[c.id]=pendLogs[c.id]||[]).push(log);setState('Alterações pendentes…');agenda(c.id)}
 
+
+/* ============ TABELA DE PREÇOS E SIMULADOR ============
+ * Preços FIXOS (só mudam por alteração de código). Negociação = desconto por cliente
+ * (em % ou R$ sobre o total da linha), com motivo obrigatório, gravado na ficha e no histórico. */
+const PRECOS=[
+  {k:'video',nome:'Videotelemetria',unid:'por veículo / mês',valor:89,un:'veículos'},
+  {k:'tele',nome:'Telemetria',unid:'por veículo / mês',valor:39,un:'veículos'},
+  {k:'pos',nome:'Posição em horário comercial',unid:'por posição / mês',valor:7500,un:'posições'}];
+const brl=n=>(+n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const num=v=>{const n=parseFloat(String(v??'').replace(/\./g,'').replace(',','.'));return isFinite(n)&&n>0?n:0};
+let precoCli='',simQ={video:'',tele:'',pos:'',meses:'1'},simD=descVazio();
+function simLoad(id){precoCli=id||'';simD=id&&get(id)?JSON.parse(JSON.stringify(get(id).desconto)):descVazio()}
+function simCalc(){
+  const q={video:num(simQ.video),tele:num(simQ.tele),pos:num(simQ.pos)},m=Math.max(1,Math.floor(num(simQ.meses))||1);
+  const linhas=PRECOS.map(p=>{const bruto=q[p.k]*p.valor,d=precoCli?simD[p.k]:null,v=d?num(d.valor):0;
+    let desc=!d||!v?0:d.tipo==='pct'?bruto*Math.min(v,100)/100:Math.min(v,bruto);
+    return{p,q:q[p.k],bruto,desc,liq:bruto-desc,d,v}});
+  const mensal=linhas.reduce((a,l)=>a+l.liq,0),bruto=linhas.reduce((a,l)=>a+l.bruto,0);
+  const semMotivo=linhas.filter(l=>l.v>0&&!(l.d.motivo||'').trim());
+  return{linhas,m,mensal,bruto,desc:bruto-mensal,periodo:mensal*m,semMotivo}}
+function simResHtml(){
+  const r=simCalc();
+  return `<div class="tw" style="margin-top:12px"><table style="min-width:640px"><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Preço de tabela</th><th class="num">Subtotal</th><th class="num">Desconto</th><th class="num">Total / mês</th></tr></thead><tbody>
+  ${r.linhas.map(l=>`<tr><td>${esc(l.p.nome)}</td><td class="num">${l.q||'—'}</td><td class="num">${brl(l.p.valor)}</td><td class="num">${brl(l.bruto)}</td><td class="num ${l.desc?'dsc':''}">${l.desc?'− '+brl(l.desc)+(l.d.tipo==='pct'?' ('+Math.min(l.v,100)+'%)':''):'—'}</td><td class="num"><b>${brl(l.liq)}</b></td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="sim-tot"><div class="kpi main"><div class="l">Total mensal a cobrar</div><div class="v">${brl(r.mensal)}</div>${r.desc?`<div class="n">tabela ${brl(r.bruto)} · desconto − ${brl(r.desc)}</div>`:'<div class="n">sem desconto</div>'}</div>
+  <div class="kpi"><div class="l">Total no período (${r.m} ${r.m===1?'mês':'meses'})</div><div class="v">${brl(r.periodo)}</div><div class="n">${r.m} × ${brl(r.mensal)}</div></div></div>
+  ${r.semMotivo.length?`<div class="falta" style="margin-top:12px">Informe o <b>motivo</b> do desconto em: ${r.semMotivo.map(l=>esc(l.p.nome)).join(', ')}. Sem motivo não é possível salvar.</div>`:''}`}
+function vPrecos(){
+  const cs=[...S.clientes].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  return `<div class="card"><h3>Tabela de preços</h3>
+   <div class="tw"><table style="min-width:520px"><thead><tr><th>Item</th><th>Unidade</th><th class="num">Valor</th></tr></thead><tbody>
+   ${PRECOS.map(p=>`<tr><td>${esc(p.nome)}</td><td>${p.unid}</td><td class="num"><b>${brl(p.valor)}</b></td></tr>`).join('')}</tbody></table></div>
+   <p class="note" style="margin:10px 0 0">Valores cobrados do cliente final pela Cobli. Os preços são fixos; negociações entram como <b>desconto por cliente</b>, abaixo.</p></div>
+  <div class="card"><h3>Simulador</h3>
+   <div class="sim-g"><div><label>Cliente (para aplicar e salvar desconto)</label><select id="simCli"><option value="">Sem cliente — tabela padrão</option>${cs.map(c=>`<option value="${esc(c.id)}" ${c.id===precoCli?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
+    ${PRECOS.map(p=>`<div><label>${p.nome} — qtd de ${p.un}</label><input data-sq="${p.k}" inputmode="numeric" placeholder="0" value="${esc(simQ[p.k])}"></div>`).join('')}
+    <div><label>Meses de contrato</label><input data-sq="meses" inputmode="numeric" value="${esc(simQ.meses)}"></div></div>
+   ${precoCli?`<h3 style="margin:16px 0 8px">Desconto para ${esc(get(precoCli).nome)}</h3>
+    <div class="sim-g">${PRECOS.map(p=>{const d=simD[p.k];return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px"><b style="font-size:13px">${p.nome}</b>
+      <div style="display:flex;gap:6px;margin-top:6px"><select data-sdt="${p.k}" style="max-width:90px"><option value="pct" ${d.tipo==='pct'?'selected':''}>%</option><option value="val" ${d.tipo==='val'?'selected':''}>R$</option></select>
+      <input data-sdv="${p.k}" inputmode="decimal" placeholder="0" value="${d.valor?esc(String(d.valor).replace('.',',')):''}"></div>
+      <input data-sdm="${p.k}" placeholder="Motivo do desconto (obrigatório)" value="${esc(d.motivo)}" style="margin-top:6px"></div>`}).join('')}</div>
+    <p class="note" style="margin:8px 0 0">O desconto em R$ incide sobre o total da linha. Tudo fica registrado no histórico do cliente (quem, quando, valor e motivo).</p>
+    <div class="row-actions"><button class="btn sm" data-act="simSalvar">Salvar desconto deste cliente</button></div>`:''}
+   <div id="simRes">${simResHtml()}</div></div>`}
+function simRefresh(){const r=$('#simRes');if(r)r.innerHTML=simResHtml()}
+document.addEventListener('input',e=>{const t=e.target,d=t.dataset;if(view!=='precos'||!d)return;
+  if(d.sq){simQ[d.sq]=t.value;simRefresh()}
+  else if(d.sdv){simD[d.sdv].valor=t.value;simRefresh()}
+  else if(d.sdm){simD[d.sdm].motivo=t.value;simRefresh()}});
+document.addEventListener('change',e=>{const t=e.target,d=t.dataset;if(view!=='precos')return;
+  if(t.id==='simCli'){simLoad(t.value);render();return}
+  if(d&&d.sdt){simD[d.sdt].tipo=t.value;simRefresh()}});
+function simSalvar(){
+  const c=get(precoCli);if(!c)return;const r=simCalc();
+  if(r.semMotivo.length){alert('Informe o motivo do desconto em: '+r.semMotivo.map(l=>l.p.nome).join(', ')+'.');return}
+  const novo={};PRECOS.forEach(p=>{const d=simD[p.k],v=num(d.valor);novo[p.k]={tipo:d.tipo,valor:v,motivo:v?d.motivo.trim():''}});
+  const txt=k=>{const d=novo[k];return d.valor?(d.tipo==='pct'?d.valor+'%':brl(d.valor))+' — '+d.motivo:'sem desconto'};
+  const mudou=PRECOS.filter(p=>JSON.stringify(novo[p.k])!==JSON.stringify(c.desconto[p.k]));
+  if(!mudou.length){setState('Nenhuma alteração de desconto');return}
+  c.desconto=novo;mudou.forEach(p=>touch(c,'Preço: desconto '+p.nome+' → '+txt(p.k)));
+  simLoad(c.id);renderKeep();setState('Desconto salvo ✓')}
+
 /* ============ VIEWS ============ */
 const pctClass=p=>p>=100?'':p>=60?'warn':'bad';
 function render(){
   $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===view||(view==='ficha'&&b.dataset.view==='painel')));
   const em=new Set();S.clientes.forEach(c=>{[c.responsavel,...c.one.map(u=>u.email)].forEach(x=>x&&emailOk(x)&&em.add(x))});
   $('#emails').innerHTML=[...em].map(x=>`<option value="${esc(x)}">`).join('');
-  $('#main').innerHTML=({painel:vPainel,pilotos:vPilotos,notif:vNotif,ficha:vFicha})[view]();
+  $('#main').innerHTML=({painel:vPainel,pilotos:vPilotos,precos:vPrecos,notif:vNotif,ficha:vFicha})[view]();
   if(view==='ficha'&&histAberto)loadHist(get(fichaId));
 }
 function renderKeep(){const y=window.scrollY;render();window.scrollTo(0,y)}
@@ -584,7 +660,8 @@ function vFicha(c0){
 
   ${blocoHead(c,1,'Equipamentos enviados para o piloto: informe a quantidade de cada tipo (zero = não enviado).')}
     <div class="eqg">${EQUIPS.map(e=>`<div class="eq ${+c.equip[e].qtd>0?'on':''}"><b>${e}</b><input type="number" min="0" data-f="equip.${e}.qtd" data-n="1" data-eq="1" value="${c.equip[e].qtd||''}" placeholder="quantidade"></div>`).join('')}</div>
-    <div class="grid2">${fld('Data de instalação','instalacao',c.instalacao,'date')}</div></div>
+    <div class="grid2">${fld('Data de instalação','instalacao',c.instalacao,'date')}</div>
+    <div class="row-actions"><button class="btn ghost sm" data-act="simular">💰 Simular valor</button></div></div>
 
   ${blocoHead(c,2)}
     <div class="radios"><span class="lbl">Painel liberado para a GR Parcerias?</span>${[['sim','Sim'],['nao','Não']].map(([v,l])=>`<label class="rd"><input type="radio" name="painel" data-f="painel" value="${v}" ${c.painel===v?'checked':''}> ${l}</label>`).join('')}</div>
@@ -733,6 +810,8 @@ document.addEventListener('click',async e=>{
     if(last==='grupos'){const g=arr[idx];if(!confirm(`Remover o grupo "${g.nome||'sem nome'}"?`))return;c.eventos.forEach(ev=>ev.acoes.forEach(a=>{if(a.t==='grupo'&&a.g===g.nome)a.g=''}))}
     arr.splice(idx,1);touch(c,'Linha removida ('+last+')');renderKeep();return}
   const a=d.act;
+  if(a==='simular'&&c){simLoad(c.id);view='precos';render();window.scrollTo(0,0);return}
+  if(a==='simSalvar'){simSalvar();return}
   if(a==='saveBack'){await saveAndBack(c)}
   if(a==='newClient'){const nome=prompt('Nome do cliente / piloto:');if(!nome||!nome.trim())return;
     const n=novoCliente(nome.trim());S.clientes.unshift(n);touch(n,'Piloto cadastrado');openFicha(n.id)}
