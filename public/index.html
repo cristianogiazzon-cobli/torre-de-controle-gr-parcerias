@@ -163,6 +163,21 @@ td select{min-width:118px}
 td.gat select{min-width:118px}
 @media(max-width:900px){.ficha{grid-template-columns:1fr}.idx{position:static}}
 @media(max-width:700px){main{padding:12px}header{padding:12px}.fun{grid-template-columns:1fr}.grow,.gh{grid-template-columns:110px 1fr}}
+/* matriz clientes x blocos */
+.mx{width:100%;border-collapse:separate;border-spacing:0 4px}.mx th{font-size:11px;color:var(--muted,#6b6f8d);font-weight:600;text-align:center;padding:2px 4px}.mx th:first-child,.mx td:first-child{text-align:left}
+.mx td{padding:3px 4px;text-align:center}.mx td.nm{font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.mx .c{display:inline-flex;width:30px;height:24px;border-radius:6px;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;background:#E9EAF2;color:#8a8da8}
+.mx .c.ok{background:var(--green);color:#fff}.mx .c.part{background:#FBE7B5;color:#8a5a00}.mx .c.no{background:#F6D5D6;color:#A32227}
+.mx-sum{font-size:13px;margin:0 0 8px}.mx-leg{font-size:11px;margin-top:6px;color:#6b6f8d}
+/* calendário */
+.cal{position:absolute;z-index:300;background:#fff;border:1px solid #D9DBE7;border-radius:10px;box-shadow:0 10px 28px rgba(7,7,78,.2);padding:10px;width:252px;font-size:13px}
+.cal .ch{display:flex;align-items:center;gap:4px;margin-bottom:6px}.cal .ch b{flex:1;text-align:center}
+.cal button{border:0;background:transparent;cursor:pointer;border-radius:6px;font:inherit;color:inherit}.cal .ch button{width:26px;height:26px}.cal .ch button:hover,.cal .g button:hover{background:#EEF0FA}
+.cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.cal .g span{font-size:11px;color:#6b6f8d;padding:3px 0}.cal .g button{height:30px}
+.cal .g .out{visibility:hidden}.cal .g .hj{box-shadow:inset 0 0 0 1px var(--green)}.cal .g .sel{background:var(--indigo,#07074E);color:#fff}
+.cal .cf{display:flex;justify-content:space-between;margin-top:6px}.cal .cf button{padding:4px 8px;font-size:12px;color:#001BB8}
+.logo-up{display:flex;align-items:center;gap:14px;margin:12px 0 4px;flex-wrap:wrap}.logo-up .prev{width:160px;height:72px;border:1px dashed #C9CCE0;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}.logo-up .prev img{max-width:100%;max-height:100%}
+@media print{.cal{display:none!important}}
 @media print{header,nav,.idx,.noprint,#saveState{display:none!important}body{background:#fff}.ficha{display:block}.card{break-inside:avoid;border-color:#ccc}main{padding:0}}
 </style>
 </head>
@@ -206,7 +221,7 @@ var IDX_VELOCIDADE = 3;
 var GATILHOS = ['Imediato (1ª ocorrência)', 'Nítido 1x', 'Nítido 2x', 'Nítido 3x', '3 s', '5 s', '10 s', '15 s', '30 s', '60 s', '3 eventos em 60 min'];
 var FROTAS = [['leve', 'Frota leve'], ['pesada', 'Frota pesada'], ['hibrida', 'Frota híbrida']];
 var BLOCOS = ['Referência (HubSpot)', 'Equipamentos enviados', 'Liberação no painel', 'Acesso à plataforma ONE',
-  'Eventos monitorados', 'Frota monitorada', 'Grupos de aviso', 'Piloto (início e fim)'];
+  'Grupos de aviso', 'Eventos monitorados', 'Frota monitorada', 'Piloto (início e fim)'];
 var DIAS_AVISO_PILOTO = [15, 7, 3, 2, 1, 0]; // dias antes do fim em que o Slack avisa
 var DIAS_COBRANCA = [1, 3, 5];               // seg/qua/sex: lembrete de dados faltantes
 
@@ -260,24 +275,24 @@ function itens(c) {
   add(3, 'Ao menos 1 acesso à plataforma ONE', us.length > 0);
   add(3, 'Todos os acessos com nome e e-mail válido', us.length > 0 && us.every(function (u) { return u.nome && emailOk(u.email); }));
   var mon = eventosMon(c);
-  add(4, 'Ao menos 1 evento marcado para monitorar', mon.length > 0);
-  add(4, 'Todos os eventos monitorados com severidade (Leve/Grave/Gravíssimo)', mon.length > 0 && mon.every(function (e) { return e.sev; }));
-  add(4, 'Todos os eventos monitorados com gatilho definido', mon.length > 0 && mon.every(function (e) { return e.gatilho && String(e.gatilho).trim(); }));
-  add(4, 'Todos os eventos monitorados com ao menos 1 ação', mon.length > 0 && mon.every(function (e) { return e.acoes.some(function (a) { return a.t; }); }));
+  add(5, 'Ao menos 1 evento marcado para monitorar', mon.length > 0);
+  add(5, 'Todos os eventos monitorados com severidade (Leve/Grave/Gravíssimo)', mon.length > 0 && mon.every(function (e) { return e.sev; }));
+  add(5, 'Todos os eventos monitorados com gatilho definido', mon.length > 0 && mon.every(function (e) { return e.gatilho && String(e.gatilho).trim(); }));
+  add(5, 'Todos os eventos monitorados com ao menos 1 ação', mon.length > 0 && mon.every(function (e) { return e.acoes.some(function (a) { return a.t; }); }));
   var refs = [];
   c.eventos.forEach(function (e) { e.acoes.forEach(function (a) { if (a.t === 'grupo') refs.push(a.g); }); });
-  if (refs.length) add(4, 'Ações de grupo apontam para um grupo cadastrado', refs.every(function (g) { return g && gruposNomes(c).indexOf(g) >= 0; }));
+  if (refs.length) add(5, 'Ações de grupo apontam para um grupo cadastrado', refs.every(function (g) { return g && gruposNomes(c).indexOf(g) >= 0; }));
   if (c.eventos[IDX_VELOCIDADE] && c.eventos[IDX_VELOCIDADE].monitorar)
-    add(4, 'Excesso de velocidade: ao menos 1 regra (via, % acima e severidade)', c.velocidade.some(function (r) { return r.pct && r.sev; }));
-  add(5, 'Tipo de frota (leve, pesada ou híbrida)', c.frota.tipo === 'leve' || c.frota.tipo === 'pesada' || c.frota.tipo === 'hibrida');
-  add(5, 'Monitorar todos os veículos OU informar as placas', c.frota.todos || placasLista(c.frota.placas).length > 0);
-  add(6, 'Ao menos 1 grupo', c.grupos.length > 0);
-  add(6, 'Todos os grupos com nome, objetivo e ao menos 1 pessoa com telefone válido', c.grupos.length > 0 && c.grupos.every(function (g) {
+    add(5, 'Excesso de velocidade: ao menos 1 regra (via, % acima e severidade)', c.velocidade.some(function (r) { return r.pct && r.sev; }));
+  add(6, 'Tipo de frota (leve, pesada ou híbrida)', c.frota.tipo === 'leve' || c.frota.tipo === 'pesada' || c.frota.tipo === 'hibrida');
+  add(6, 'Monitorar todos os veículos OU informar as placas', c.frota.todos || placasLista(c.frota.placas).length > 0);
+  add(4, 'Ao menos 1 grupo', c.grupos.length > 0);
+  add(4, 'Todos os grupos com nome, objetivo e ao menos 1 pessoa com telefone válido', c.grupos.length > 0 && c.grupos.every(function (g) {
     return g.nome && g.objetivo && g.pessoas.length > 0 && g.pessoas.every(function (p) { return p.nome && foneOk(p.telefone); });
   }));
   add(7, 'Início do piloto', c.inicio);
   add(7, 'Fim previsto do piloto', c.fim && (!c.inicio || c.fim >= c.inicio));
-  add(-1, 'Responsável Cobli (e-mail)', emailOk(c.responsavel));
+  add(0, 'Responsável Cobli (e-mail)', emailOk(c.responsavel));
   return L;
 }
 function faltas(c, sec) { return itens(c).filter(function (i) { return i.sec === sec && !i.ok; }).map(function (i) { return i.l; }); }
@@ -444,13 +459,14 @@ function novoCliente(nome,extra={}){return Object.assign({
   hubspot:{link:'',id:'',empresa:nome,responsavel:'',potencial:'',regiao:''},
   equip:Object.fromEntries(EQUIPS.map(e=>[e,{qtd:0}])),instalacao:'',painel:'',one:[],
   eventos:EVENTOS_BASE.map(novoEvento),velocidade:[],frota:{todos:false,tipo:'',placas:''},grupos:[],
-  inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:'',desconto:descVazio(),posicoes:0},extra)}
+  inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:'',desconto:descVazio(),posicoes:0,logo:''},extra)}
 const LEGADO=['etapas','matriz','sideLetter','ultimoRepasse','usuarios','acesso','escopo','limiar','tolerancia','criticidadeConfirmada','frotaQtd','frotaIncompleta','modalidade','veiculos','precoManual','cnpj','liberadoComPendencias'];
 function normaliza(c){
   const b=novoCliente(c.nome||'');
   Object.keys(b).forEach(k=>{if(c[k]===undefined)c[k]=b[k]});
   ['hubspot','frota'].forEach(k=>Object.keys(b[k]).forEach(s=>{if(c[k][s]===undefined)c[k][s]=b[k][s]}));
   EQUIPS.forEach(e=>{if(!c.equip[e])c.equip[e]={qtd:0}});
+  if(typeof c.logo!=='string')c.logo='';
   if(!c.desconto||typeof c.desconto!=='object')c.desconto=descVazio();
   ['video','tele','pos'].forEach(k=>{if(!c.desconto[k])c.desconto[k]={tipo:'pct',valor:0,motivo:''}});
   if(!Array.isArray(c.eventos)||!c.eventos.length)c.eventos=b.eventos;
@@ -578,6 +594,15 @@ function render(){
 }
 function renderKeep(){const y=window.scrollY;render();window.scrollTo(0,y)}
 function dotsHtml(c){return blocos(c).map(b=>`<i class="dot ${b.completo?'ok':b.ok>0?'andamento':''}" title="${b.sec+1}. ${esc(b.titulo)} — ${b.ok}/${b.total}"></i>`).join('')}
+const BCURTO=['HubSpot','Equip.','Painel','ONE','Grupos','Eventos','Frota','Piloto'];
+function matrizHtml(lista){
+  if(!lista.length)return `<div class="card"><h3>Andamento das fichas</h3><div class="note">Nenhum cliente em onboarding ou piloto.</div></div>`;
+  const rows=lista.map(c=>({c,bl:blocos(c),cp:completude(c)})).sort((x,y)=>x.cp.pct-y.cp.pct);
+  const trava=BLOCOS.map((t,s)=>({t,s,n:rows.filter(r=>!r.bl[s].completo).length})).sort((x,y)=>y.n-x.n)[0];
+  const sum=trava.n?`Bloco mais travado: <b>${trava.s+1}. ${esc(trava.t)}</b> — ${trava.n} de ${rows.length} cliente(s) com pendência.`:'Todos os blocos estão completos nos clientes em andamento.';
+  return `<div class="card"><h3>Andamento das fichas (onboarding e piloto)</h3><div class="mx-sum">${sum}</div><div class="tw"><table class="mx" style="min-width:0"><thead><tr><th>Cliente</th>${BCURTO.map((n,i)=>`<th title="${esc(BLOCOS[i])}">${i+1}<br>${n}</th>`).join('')}<th>Ficha</th></tr></thead><tbody>
+  ${rows.map(({c,bl,cp})=>`<tr><td class="nm" data-open="${c.id}" title="${esc(c.nome)}">${esc(c.nome)}</td>${bl.map((b,i)=>{const f=faltas(c,i);return `<td><span class="c ${b.completo?'ok':b.ok>0?'part':'no'}" data-open="${c.id}" data-goto="${i}" title="${esc((i+1)+'. '+BLOCOS[i]+' — '+(b.completo?'completo':'falta: '+f.join('; ')))}">${b.completo?'✓':b.ok+'/'+b.total}</span></td>`}).join('')}<td style="font-size:12px;font-weight:600">${cp.pct}%</td></tr>`).join('')}</tbody></table></div>
+  <div class="mx-leg">✓ completo · amarelo = parcial · vermelho = vazio. Passe o mouse para ver o que falta; clique para abrir a ficha naquele bloco.</div></div>`}
 function vPainel(){
   const cs=S.clientes,ob=cs.filter(c=>c.status==='Onboarding'),pil=cs.filter(c=>c.status==='Piloto'),at=cs.filter(c=>c.status==='Ativo'),emProj=cs.filter(emProjeto);
   const comp=cs.filter(c=>completude(c).pct===100).length;
@@ -585,7 +610,6 @@ function vPainel(){
   const lista=cs.filter(c=>(filtro==='Todos'||c.status===filtro)&&c.nome.toLowerCase().includes(busca.toLowerCase()));
   if(!cs.length)return `<div class="card empty"><h3>Nenhum piloto cadastrado ainda</h3><p>Clique em <b>+ Novo piloto</b> para abrir a ficha de assessment de um cliente.</p><button class="btn" data-act="seed">Cadastrar clientes atuais (Via Cristais e Núcleo Engenharia)</button></div>`;
   const T=emProj.length||1;
-  const funil=BLOCOS.map((t,s)=>({t:`${s+1}. ${t}`,n:emProj.filter(c=>blocos(c)[s].completo).length}));
   return `
   <div class="kpis">
     <div class="kpi"><div class="l">Pilotos / clientes</div><div class="v">${cs.length}</div><div class="n">${ob.length} onboarding · ${pil.length} piloto · ${at.length} ativos</div></div>
@@ -593,8 +617,7 @@ function vPainel(){
     <div class="kpi"><div class="l">Pilotos terminando em 15 dias</div><div class="v">${cs.filter(c=>{const p=pilotoInfo(c);return ['vence','vencido'].includes(p.estado)||(p.estado==='andamento'&&p.restantes<=15)}).length}</div></div>
     <div class="kpi"><div class="l">Alertas abertos</div><div class="v" style="color:${als.length?'var(--red)':'var(--green)'}">${als.length}</div></div>
   </div>
-  <div class="card"><h3>Blocos da ficha completos (clientes em onboarding e piloto)</h3>
-    ${funil.map(f=>`<div class="fun"><span>${esc(f.t)}</span><div class="stack"><i style="width:${f.n/T*100}%;background:var(--green)"></i></div><span class="muted">${f.n}/${emProj.length}</span></div>`).join('')}</div>
+  ${matrizHtml(emProj)}
   ${als.length?`<div class="card"><h3>Pontos de atenção</h3>${als.slice(0,10).map(({c,a})=>`<div class="alert ${a.n}"><span><b data-open="${c.id}">${esc(c.nome)}</b> — ${esc(a.t)}</span></div>`).join('')}${als.length>10?`<div class="note">+ ${als.length-10} alertas (abra a ficha de cada piloto).</div>`:''}</div>`:''}
   <div class="toolbar"><input type="search" id="busca" placeholder="Buscar cliente…" value="${esc(busca)}">
     ${['Todos',...STATUS].map(s=>`<button class="chip ${filtro===s?'on':''}" data-filtro="${s}">${s}</button>`).join('')}</div>
@@ -676,9 +699,9 @@ function vFicha(c0){
   const c=get(fichaId);if(!c)return '<div class="empty">Ficha não encontrada.</div>';
   const hs=c.hubspot,pi=pilotoInfo(c),gn=gruposNomes(c);
   return `<div class="card noprint" style="margin-bottom:12px"><div class="toolbar" style="margin:0"><button class="btn ghost sm" data-act="saveBack">← Salvar e voltar ao início</button><div class="spacer"></div>
-     <button class="btn ghost sm" data-act="fichaCsv">⬇ Exportar ficha (CSV)</button><button class="btn ghost sm" data-act="print">🖨 Imprimir / PDF</button><button class="btn danger sm" data-act="delClient">Excluir</button></div></div>
+     <button class="btn ghost sm" data-act="fichaCsv">⬇ Exportar ficha (CSV)</button><button class="btn ghost sm" data-act="proposta">📄 Proposta (PDF)</button><button class="btn ghost sm" data-act="print">🖨 Imprimir ficha</button><button class="btn danger sm" data-act="delClient">Excluir</button></div></div>
   <div class="card"><div class="grid2">${fld('Nome do cliente / piloto','nome',c.nome)}${sel('Status','status',c.status,STATUS)}
-    ${fld('Responsável Cobli (e-mail — recebe os avisos)','responsavel',c.responsavel,'email','list="emails"')}${fld('Canal Slack do piloto (opcional)','canalSlack',c.canalSlack,'text','placeholder="#canal"')}</div>
+    ${fld('Canal Slack do piloto (opcional)','canalSlack',c.canalSlack,'text','placeholder="#canal"')}</div>
     <div class="hbar" id="meta" style="margin-top:12px">${metaHtml(c)}</div></div>
   <div class="ficha"><aside class="idx" id="idx">${idxHtml(c)}</aside><div>
 
@@ -686,7 +709,9 @@ function vFicha(c0){
     <div class="grid2">${fld('Link ou ID do HubSpot','hubspot.link',hs.link,'text','placeholder="https://app.hubspot.com/…/company/123456"')}
       ${fld('ID do HubSpot','hubspot.id',hs.id,'text','id="hsId" inputmode="numeric" placeholder="ex.: 98765"')}
       ${fld('Nome da empresa','hubspot.empresa',hs.empresa)}${fld('Responsável','hubspot.responsavel',hs.responsavel)}
-      ${fld('Potencial (se preenchido)','hubspot.potencial',hs.potencial,'text','data-mask="brl" inputmode="numeric" placeholder="R$ 0,00"')}${fld('Região / endereço','hubspot.regiao',hs.regiao)}</div>
+      ${fld('Responsável Cobli (e-mail — recebe os avisos)','responsavel',c.responsavel,'email','list="emails"')}${fld('Potencial (se preenchido)','hubspot.potencial',hs.potencial,'text','data-mask="brl" inputmode="numeric" placeholder="R$ 0,00"')}${fld('Região / endereço','hubspot.regiao',hs.regiao)}</div>
+    <div class="logo-up"><div class="prev">${c.logo?`<img src="${c.logo}" alt="Logo do cliente">`:'<span class="muted" style="font-size:12px">Sem logo</span>'}</div>
+      <div><label class="btn ghost sm" style="cursor:pointer">Enviar logo do cliente<input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden></label>${c.logo?' <button class="btn ghost sm" data-act="logoDel">Remover</button>':''}<div class="hint" style="margin-top:4px">PNG, JPG, SVG ou WebP. Aparece na proposta em PDF ao lado da logo Cobli.</div></div></div>
     ${/^https?:/.test(hs.link)?`<div class="row-actions"><a class="btn ghost sm" href="${esc(hs.link)}" target="_blank" rel="noopener" style="text-decoration:none">Abrir no HubSpot ↗</a></div>`:''}</div>
 
   ${blocoHead(c,1,'Equipamentos enviados para o piloto: informe a quantidade de cada tipo (zero = não enviado).')}
@@ -704,7 +729,15 @@ function vFicha(c0){
     ${c.one.map((u,i)=>`<tr><td><input data-f="one.${i}.nome" value="${esc(u.nome)}"></td><td><input type="email" list="emails" data-f="one.${i}.email" value="${esc(u.email)}"></td><td><button class="btn ghost sm" data-delrow="one.${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="3"><div class="empty">Nenhum acesso cadastrado.</div></td></tr>'}</tbody></table></div>
     <div class="row-actions"><button class="btn ghost sm" data-addrow="one">+ Acesso</button></div></div>
 
-  ${blocoHead(c,4,'Informativo para configurar a Torre — esta matriz não dispara nada. Marcar um evento para monitorar significa que a Torre vai notificá-lo; defina a severidade, o gatilho e a ordem de escalonamento das ações (1ª, 2ª e 3ª).')}
+  ${blocoHead(c,4,'Cadastre primeiro os grupos: eles aparecem como opção nas ações "Aviso no grupo de WhatsApp" do bloco 6 (Eventos monitorados).')}
+    <div class="note" style="margin:0 0 10px"><b>${c.grupos.length}</b> grupo(s).</div>
+    ${c.grupos.map((g,i)=>`<div class="grp"><div class="grid2">${fld('Nome do grupo',`grupos.${i}.nome`,g.nome)}${fld('Objetivo',`grupos.${i}.objetivo`,g.objetivo,'text','placeholder="ex.: alertas da unidade SP"')}</div>
+      <div class="tw" style="margin-top:10px"><table style="min-width:520px"><thead><tr><th>Pessoa</th><th>Telefone</th><th></th></tr></thead><tbody>
+      ${g.pessoas.map((p,k)=>`<tr><td><input data-f="grupos.${i}.pessoas.${k}.nome" value="${esc(p.nome)}"></td><td><input data-f="grupos.${i}.pessoas.${k}.telefone" data-mask="fone" inputmode="numeric" maxlength="14" value="${esc(p.telefone)}" placeholder="(11)99999-0000"></td><td><button class="btn ghost sm" data-delrow="grupos.${i}.pessoas.${k}">✕</button></td></tr>`).join('')||'<tr><td colspan="3"><div class="empty">Nenhuma pessoa.</div></td></tr>'}</tbody></table></div>
+      <div class="row-actions"><button class="btn ghost sm" data-addrow="grupos.${i}.pessoas">+ Pessoa</button><button class="btn ghost sm" data-delrow="grupos.${i}">Remover grupo</button></div></div>`).join('')}
+    <div class="row-actions"><button class="btn ghost sm" data-addrow="grupos">+ Grupo</button></div></div>
+
+  ${blocoHead(c,5,'Informativo para configurar a Torre — esta matriz não dispara nada. Marcar um evento para monitorar significa que a Torre vai notificá-lo; defina a severidade, o gatilho e a ordem de escalonamento das ações (1ª, 2ª e 3ª).')}
     <div class="row-actions noprint" style="margin:0 0 10px"><button class="btn ghost sm" data-act="evTodos">Marcar todos para monitorar</button><button class="btn ghost sm" data-act="evSugestao">Preencher com a sugestão (8 eventos de controle imediato)</button><button class="btn ghost sm" data-act="evLimpar">Limpar tudo</button></div>
     <div class="tw"><table style="min-width:820px"><thead><tr><th>Monitorar</th><th>Evento</th><th>Severidade</th><th>Gatilho</th><th>1ª ação</th><th>2ª ação</th><th>3ª ação</th><th></th></tr></thead><tbody>
     ${c.eventos.map((e,i)=>evRow(c,e,i,gn)).join('')}</tbody></table></div>
@@ -715,19 +748,11 @@ function vFicha(c0){
      <td><select class="sev sv${SEVS.indexOf(r.sev)}" data-f="velocidade.${i}.sev"><option value="">—</option>${SEVS.map(x=>`<option ${r.sev===x?'selected':''}>${x}</option>`).join('')}</select></td><td><button class="btn ghost sm" data-delrow="velocidade.${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="5"><div class="empty">Nenhuma regra.</div></td></tr>'}</tbody></table></div>
     <div class="row-actions"><button class="btn ghost sm" data-addrow="velocidade">+ Regra de velocidade</button></div>`:''}</div>
 
-  ${blocoHead(c,5)}
+  ${blocoHead(c,6)}
     <div class="radios"><span class="lbl">Tipo de frota</span>${FROTAS.map(([v,l])=>`<label class="rd"><input type="radio" name="frotatipo" data-f="frota.tipo" value="${v}" ${c.frota.tipo===v?'checked':''}> ${l}</label>`).join('')}</div>
      <label class="chk"><input type="checkbox" data-chk="frota.todos" ${c.frota.todos?'checked':''}> <b>Monitorar todos os veículos</b></label>
     ${c.frota.todos?'<div class="note">Todos os veículos da conta serão monitorados — não é preciso informar placas.</div>':`<label class="f" style="margin-top:10px">Placas a monitorar (uma por linha ou separadas por vírgula)<textarea data-f="frota.placas" data-mask="placa" placeholder="ABC1D23&#10;EFG4H56">${esc(c.frota.placas)}</textarea></label>
      <div class="note" id="placasQtd">${placasLista(c.frota.placas).length} placa(s) identificada(s).</div>`}</div>
-
-  ${blocoHead(c,6,'Os grupos cadastrados aqui aparecem como opção nas ações "Aviso no grupo de WhatsApp" do bloco 5.')}
-    <div class="note" style="margin:0 0 10px"><b>${c.grupos.length}</b> grupo(s).</div>
-    ${c.grupos.map((g,i)=>`<div class="grp"><div class="grid2">${fld('Nome do grupo',`grupos.${i}.nome`,g.nome)}${fld('Objetivo',`grupos.${i}.objetivo`,g.objetivo,'text','placeholder="ex.: alertas da unidade SP"')}</div>
-      <div class="tw" style="margin-top:10px"><table style="min-width:520px"><thead><tr><th>Pessoa</th><th>Telefone</th><th></th></tr></thead><tbody>
-      ${g.pessoas.map((p,k)=>`<tr><td><input data-f="grupos.${i}.pessoas.${k}.nome" value="${esc(p.nome)}"></td><td><input data-f="grupos.${i}.pessoas.${k}.telefone" data-mask="fone" inputmode="numeric" maxlength="14" value="${esc(p.telefone)}" placeholder="(11)99999-0000"></td><td><button class="btn ghost sm" data-delrow="grupos.${i}.pessoas.${k}">✕</button></td></tr>`).join('')||'<tr><td colspan="3"><div class="empty">Nenhuma pessoa.</div></td></tr>'}</tbody></table></div>
-      <div class="row-actions"><button class="btn ghost sm" data-addrow="grupos.${i}.pessoas">+ Pessoa</button><button class="btn ghost sm" data-delrow="grupos.${i}">Remover grupo</button></div></div>`).join('')}
-    <div class="row-actions"><button class="btn ghost sm" data-addrow="grupos">+ Grupo</button></div></div>
 
   ${blocoHead(c,7)}
     <div class="grid2">${fld('Início do piloto','inicio',c.inicio,'date')}${fld('Fim previsto','fim',c.fim,'date')}${fld('Fim real','fimReal',c.fimReal,'date')}${sel('Resultado','resultado',c.resultado,RESULTADOS)}
@@ -761,10 +786,10 @@ function fichaRows(c){
   b='2. Equipamentos enviados';EQUIPS.forEach(e=>A(b,e,c.equip[e].qtd||0));A(b,'Data de instalação',fdate(c.instalacao));
   b='3. Liberação no painel';A(b,'Painel liberado ('+EMAIL_CSO+')',c.painel==='sim'?'Sim':c.painel==='nao'?'Não':'—');
   b='4. Acesso à plataforma ONE';c.one.forEach(u=>A(b,u.nome,u.email));
-  b='5. Eventos monitorados';c.eventos.filter(e=>e.monitorar).forEach(e=>A(b,e.evento,`Severidade: ${e.sev||'—'} | Gatilho: ${e.gatilho||'—'} | Ações: ${acoesTxt(e)}`));
-  c.velocidade.forEach((v,i)=>A('5. Excesso de velocidade','Regra '+(i+1),`Via: ${v.via||'—'} | Acima de ${v.pct||'—'}% | Por ${v.seg||'—'} s | Severidade: ${v.sev||'—'}`));
-  b='6. Frota monitorada';A(b,'Tipo',{leve:'Leve',pesada:'Pesada',hibrida:'Híbrida'}[c.frota.tipo]||'—');A(b,'Monitorar todos',c.frota.todos?'Sim':'Não');if(!c.frota.todos)A(b,'Placas',placasLista(c.frota.placas).join(' '));
-  b='7. Grupos de aviso';c.grupos.forEach(g=>A(b,g.nome,`Objetivo: ${g.objetivo||'—'} | Pessoas: ${g.pessoas.map(p=>p.nome+' ('+p.telefone+')').join(', ')||'—'}`));
+  b='5. Grupos de aviso';c.grupos.forEach(g=>A(b,g.nome,`Objetivo: ${g.objetivo||'—'} | Pessoas: ${g.pessoas.map(p=>p.nome+' ('+p.telefone+')').join(', ')||'—'}`));
+  b='6. Eventos monitorados';c.eventos.filter(e=>e.monitorar).forEach(e=>A(b,e.evento,`Severidade: ${e.sev||'—'} | Gatilho: ${e.gatilho||'—'} | Ações: ${acoesTxt(e)}`));
+  c.velocidade.forEach((v,i)=>A('6. Excesso de velocidade','Regra '+(i+1),`Via: ${v.via||'—'} | Acima de ${v.pct||'—'}% | Por ${v.seg||'—'} s | Severidade: ${v.sev||'—'}`));
+  b='7. Frota monitorada';A(b,'Tipo',{leve:'Leve',pesada:'Pesada',hibrida:'Híbrida'}[c.frota.tipo]||'—');A(b,'Monitorar todos',c.frota.todos?'Sim':'Não');if(!c.frota.todos)A(b,'Placas',placasLista(c.frota.placas).join(' '));
   b='8. Piloto';A(b,'Início',fdate(c.inicio));A(b,'Fim previsto',fdate(c.fim));A(b,'Fim real',fdate(c.fimReal));A(b,'Resultado',c.resultado);A(b,'Reunião do painel',fdate(c.reuniaoPainel));
   if(c.notas)A('Observações','',c.notas);
   return r}
@@ -788,6 +813,39 @@ function refreshGrupoOpts(c){$$('select[data-f$=".g"]').forEach(el=>{const m=el.
 function updateMeta(c){const fr=$('#fResumo');if(fr)fr.innerHTML=fichaResumoHtml(c);const m=$('#meta');if(m)m.innerHTML=metaHtml(c);const m2=$('#meta2');if(m2)m2.innerHTML=metaHtml(c);const i=$('#idx');if(i)i.innerHTML=idxHtml(c);const pi=pilotoInfo(c),p=$('#pilSit');if(p)p.innerHTML=`Situação: <b>${pilotoTxt(pi)}</b>${pi.total?` · ${pi.pct}% do prazo`:''}`;
   const q=$('#placasQtd');if(q)q.textContent=`${placasLista(c.frota.placas).length} placa(s) identificada(s).`;
   $$('.bloco').forEach(el=>{const s=+el.id.slice(1),b=blocos(c)[s];el.classList.toggle('ok',b.completo);const bn=$('.bn',el);if(bn)bn.textContent=b.completo?'✓':s+1;const bd=$('h3 .badge',el);if(bd){bd.textContent=`${b.ok}/${b.total}`;bd.className='badge b-'+(b.completo?'ok':b.ok?'warn':'Pendente')}})}
+function logoUpload(c,f){
+  if(!/^image\/(png|jpeg|svg\+xml|webp)$/.test(f.type)){toast('Formato não aceito — use PNG, JPG, SVG ou WebP');return}
+  const fim=url=>{c.logo=url;touch(c,'Referência: logo do cliente atualizada');renderKeep()};
+  const rd=new FileReader();
+  rd.onload=()=>{
+    if(f.type==='image/svg+xml'){if(rd.result.length>300000){toast('SVG muito pesado (máx. ~200 KB)');return}fim(rd.result);return}
+    const im=new Image();im.onload=()=>{const k=Math.min(1,600/im.width,300/im.height),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.width*k));cv.height=Math.max(1,Math.round(im.height*k));cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);fim(cv.toDataURL('image/png'))};
+    im.onerror=()=>toast('Não consegui ler a imagem');im.src=rd.result};
+  rd.readAsDataURL(f)}
+/* mini calendário (campos data-date) */
+let calEl=null,calAnc=null,calY=0,calM=0;
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function calClose(){if(calEl){calEl.remove();calEl=null;calAnc=null}}
+function calOpen(inp){calClose();calAnc=inp;const v=parseBR(inp.value),d=v?new Date(v+'T00:00:00'):new Date();calY=d.getFullYear();calM=d.getMonth();calEl=document.createElement('div');calEl.className='cal noprint';document.body.appendChild(calEl);calDraw()}
+function calDraw(){
+  const sel=parseBR(calAnc.value)||'',hj=today(),first=new Date(calY,calM,1).getDay(),n=new Date(calY,calM+1,0).getDate();
+  let g=['D','S','T','Q','Q','S','S'].map(x=>`<span>${x}</span>`).join('');
+  for(let i=0;i<first;i++)g+='<button class="out" tabindex="-1"></button>';
+  for(let d=1;d<=n;d++){const i=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;g+=`<button type="button" data-cd="${i}" class="${i===sel?'sel':i===hj?'hj':''}">${d}</button>`}
+  calEl.innerHTML=`<div class="ch"><button type="button" data-cm="-12" title="Ano anterior">«</button><button type="button" data-cm="-1" title="Mês anterior">‹</button><b>${MESES[calM]} ${calY}</b><button type="button" data-cm="1" title="Próximo mês">›</button><button type="button" data-cm="12" title="Próximo ano">»</button></div><div class="g">${g}</div><div class="cf"><button type="button" data-cd="${hj}">Hoje</button><button type="button" data-cd="">Limpar</button></div>`;
+  const r=calAnc.getBoundingClientRect(),h=calEl.offsetHeight;
+  calEl.style.left=Math.max(8,Math.min(r.left+scrollX,innerWidth-262+scrollX))+'px';
+  calEl.style.top=(r.bottom+h+8>innerHeight&&r.top>h+8?r.top+scrollY-h-4:r.bottom+scrollY+4)+'px'}
+document.addEventListener('click',e=>{
+  const t=e.target;
+  if(calEl&&!document.contains(calAnc))calClose();
+  const cm=t.closest&&t.closest('[data-cm]'),cd=t.closest&&t.closest('[data-cd]');
+  if(calEl&&cm){const k=+cm.dataset.cm,d=new Date(calY,calM+k,1);calY=d.getFullYear();calM=d.getMonth();calDraw();return}
+  if(calEl&&cd){const a=calAnc,v=cd.dataset.cd;calClose();a.value=dispBR(v);a.dispatchEvent(new Event('change',{bubbles:true}));return}
+  if(t.matches&&t.matches('input[data-date]')){if(calAnc!==t)calOpen(t);return}
+  if(calEl&&!t.closest('.cal'))calClose()});
+document.addEventListener('focusin',e=>{const t=e.target;if(t.matches&&t.matches('input[data-date]')&&calAnc!==t)calOpen(t)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Tab')calClose()});
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='ganttAll'){ganttAll=t.checked;render();return}
@@ -795,6 +853,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.gat!==undefined){const ev=c.eventos[+t.dataset.gat];
     if(t.value==='__outro'){ev.gOutro=true;ev.gatilho=''}else{ev.gOutro=false;ev.gatilho=t.value}
     touch(c,`Eventos: gatilho de ${ev.evento||'evento'} → ${ev.gatilho||'(outro)'}`);renderKeep();return}
+  if(t.id==='logoFile'){const f=t.files&&t.files[0];t.value='';if(f)logoUpload(c,f);return}
   const isChk=t.dataset.chk!==undefined,path=isChk?t.dataset.chk:t.dataset.f;if(!path)return;
   let val=isChk?t.checked:(t.dataset.n?(t.value===''?0:parseFloat(t.value)):t.value);
   if(t.dataset.date!==undefined){
@@ -805,6 +864,10 @@ document.addEventListener('change',e=>{
   else if(t.dataset.mask==='fone'){t.classList.toggle('inv',!!val&&!foneOk(val))}
   else if(t.dataset.mask==='placa'){val=t.value=placasLista(t.value).join('\n')}
   else if(t.type==='text'||t.tagName==='TEXTAREA'){if(t.dataset.mask!=='brl')val=t.value=t.value.trim()}
+  const mEv=/^eventos\.(\d+)\.monitorar$/.exec(path);
+  if(mEv&&!val){const ev=c.eventos[+mEv[1]];const tem=ev.sev||ev.gatilho||ev.acoes.some(a=>a.t)||(+mEv[1]===IDX_VELOCIDADE&&c.velocidade.length);
+    if(tem&&!confirm('Desmarcar "monitorar" apaga severidade, gatilho e ações desta linha. Continuar?')){t.checked=true;return}
+    ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}];if(+mEv[1]===IDX_VELOCIDADE)c.velocidade=[]}
   const {o,last,old}=setPath(c,path,val);
   const top=path.split('.')[0],nomeCampo=last;let log=`${SECLOG[top]||'Cadastro'}: ${nomeCampo} → ${isChk?(val?'sim':'não'):(String(val).length>60||last==='placas'||last==='notas'?'(atualizado)':val||'(vazio)')}`;
   let rerender=isChk||t.tagName==='SELECT'||t.type==='radio';
@@ -821,7 +884,8 @@ document.addEventListener('change',e=>{
   touch(c,log);
   if(rerender)renderKeep();else updateMeta(c);
 });
-document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.mask&&MASK[t.dataset.mask]){const v=MASK[t.dataset.mask](t.value);if(v!==t.value)t.value=v}
+document.addEventListener('input',e=>{const t=e.target;if(calEl&&t===calAnc){const v=parseBR(t.value);if(v){calY=+v.slice(0,4);calM=+v.slice(5,7)-1;calDraw()}}
+  if(t.dataset&&t.dataset.mask&&MASK[t.dataset.mask]){const v=MASK[t.dataset.mask](t.value);if(v!==t.value)t.value=v}
   if(e.target.id==='busca'){busca=e.target.value;const pos=e.target.selectionStart;render();const b=$('#busca');b.focus();b.setSelectionRange(pos,pos)}});
 async function carregaNotif(){try{notif=await rpc('getNotificacoes');if(view==='notif')render()}catch(e){setState('Erro: '+e.message,true)}}
 document.addEventListener('click',async e=>{
@@ -861,7 +925,9 @@ document.addEventListener('click',async e=>{
     c.eventos.forEach(ev=>{const s=SUGESTAO[ev.evento];if(!s)return;ev.monitorar=true;ev.sev=s[0];ev.gatilho=s[2];ev.gOutro=!GATILHOS.includes(s[2]);ev.acoes=[{t:s[1],g:s[1]==='grupo'?g0:''},{t:'',g:''},{t:'',g:''}]});
     touch(c,'Eventos: sugestão da matriz padrão aplicada');renderKeep()}
   if(a==='fichaCsv')dl(`ficha-${c.nome}.csv`,toCsv(fichaRows(c)));
+  if(a==='proposta'&&c){abrirProposta(c);return}
   if(a==='print')window.print();
+  if(a==='logoDel'){c.logo='';touch(c,'Referência: logo do cliente removida');renderKeep()}
   if(a==='csv')dl(`torre-de-controle-${today()}.csv`,toCsv([['Cliente','Status','Empresa (HubSpot)','Região','Ficha preenchida','Blocos completos','Próximo bloco','Equipamentos','Painel liberado','Eventos monitorados','Grupos','Início piloto','Fim previsto','Resultado','Responsável Cobli'],
     ...S.clientes.map(c=>{const p=proxBloco(c);return[c.nome,c.status,c.hubspot.empresa,c.hubspot.regiao,completude(c).pct+'%',nBlocosOk(c)+'/8',p<0?'Ficha completa':BLOCOS[p],equipTxt(c),c.painel==='sim'?'Sim':c.painel==='nao'?'Não':'',eventosMon(c).length,c.grupos.length,fdate(c.inicio),fdate(c.fim),c.resultado,c.responsavel]})]));
   if(a==='slSalvar'){try{notif=await rpc('salvarSlack',$('#slTok').value,$('#slCanal').value.trim(),'',$('#slTeste').value.trim());setState('Slack salvo ✓');render()}catch(err){setState('Erro: '+err.message,true)}}
@@ -886,5 +952,6 @@ window.addEventListener('beforeunload',e=>{if(Object.values(salvando).some(Boole
   }catch(e){setState('Erro ao carregar',true);$('#main').innerHTML=`<div class="card"><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 })();
 </script>
+<script src="proposta.js"></script>
 </body>
 </html>
