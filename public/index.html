@@ -218,7 +218,7 @@ var EVENTOS_BASE = ['Distração', 'Fadiga', 'Uso de celular', 'Excesso de veloc
   'Motor ocioso', 'Permanência em ponto', 'Sem identificação do motorista'];
 var IDX_VELOCIDADE = 3;
 /* Blocos da ficha (sec = índice) */
-var GATILHOS = ['Imediato (1ª ocorrência)', 'Nítido 1x', 'Nítido 2x', 'Nítido 3x', '3 s', '5 s', '10 s', '15 s', '30 s', '60 s', '3 eventos em 60 min'];
+var GATILHOS = ['Imediato (1ª ocorrência)', 'Nítido 1x', 'Nítido 2x', 'Nítido 3x', '30 s', '1 min', '3 eventos em 60 min'];
 var FROTAS = [['leve', 'Frota leve'], ['pesada', 'Frota pesada'], ['hibrida', 'Frota híbrida']];
 var BLOCOS = ['Referência (HubSpot)', 'Equipamentos enviados', 'Liberação no painel', 'Acesso à plataforma ONE',
   'Grupos de aviso', 'Eventos monitorados', 'Frota monitorada', 'Piloto (início e fim)'];
@@ -254,6 +254,7 @@ function equipTxt(c) {
   var l = EQUIPS.filter(function (e) { return c.equip[e] && +c.equip[e].qtd > 0; }).map(function (e) { return e + ' × ' + c.equip[e].qtd; });
   return l.length ? l.join(', ') : '';
 }
+function evVel(c) { return c.eventos.find(function (e) { return !e.custom && e.evento === 'Excesso de velocidade'; }); }
 function eventosMon(c) { return c.eventos.filter(function (e) { return e.monitorar; }); }
 function gruposNomes(c) { return c.grupos.map(function (g) { return (g.nome || '').trim(); }).filter(Boolean); }
 
@@ -282,7 +283,7 @@ function itens(c) {
   var refs = [];
   c.eventos.forEach(function (e) { e.acoes.forEach(function (a) { if (a.t === 'grupo') refs.push(a.g); }); });
   if (refs.length) add(5, 'Ações de grupo apontam para um grupo cadastrado', refs.every(function (g) { return g && gruposNomes(c).indexOf(g) >= 0; }));
-  if (c.eventos[IDX_VELOCIDADE] && c.eventos[IDX_VELOCIDADE].monitorar)
+  if (evVel(c) && evVel(c).monitorar)
     add(5, 'Excesso de velocidade: ao menos 1 regra (via, % acima e severidade)', c.velocidade.some(function (r) { return r.pct && r.sev; }));
   add(6, 'Tipo de frota (leve, pesada ou híbrida)', c.frota.tipo === 'leve' || c.frota.tipo === 'pesada' || c.frota.tipo === 'hibrida');
   add(6, 'Monitorar todos os veículos OU informar as placas', c.frota.todos || placasLista(c.frota.placas).length > 0);
@@ -469,8 +470,8 @@ function normaliza(c){
   if(typeof c.logo!=='string')c.logo='';
   if(!c.desconto||typeof c.desconto!=='object')c.desconto=descVazio();
   ['video','tele','pos'].forEach(k=>{if(!c.desconto[k])c.desconto[k]={tipo:'pct',valor:0,motivo:''}});
-  if(!Array.isArray(c.eventos)||!c.eventos.length)c.eventos=b.eventos;
-  c.eventos.forEach(e=>{while(e.acoes.length<3)e.acoes.push({t:'',g:''});delete e.notificar;if(e.gOutro===undefined)e.gOutro=false});
+  if(!Array.isArray(c.eventos))c.eventos=b.eventos;
+  c.eventos.forEach(e=>{while(e.acoes.length<3)e.acoes.push({t:'',g:''});delete e.notificar;if(e.gOutro===undefined)e.gOutro=false;if(e.gatilho==='60 s')e.gatilho='1 min'});
   c.grupos.forEach(g=>{if(!Array.isArray(g.pessoas))g.pessoas=[];if(g.objetivo===undefined)g.objetivo=''});
   LEGADO.forEach(k=>delete c[k]);
   return c}
@@ -741,8 +742,8 @@ function vFicha(c0){
     <div class="row-actions noprint" style="margin:0 0 10px"><button class="btn ghost sm" data-act="evTodos">Marcar todos para monitorar</button><button class="btn ghost sm" data-act="evSugestao">Preencher com a sugestão (8 eventos de controle imediato)</button><button class="btn ghost sm" data-act="evLimpar">Limpar tudo</button></div>
     <div class="tw"><table style="min-width:820px"><thead><tr><th>Monitorar</th><th>Evento</th><th>Severidade</th><th>Gatilho</th><th>1ª ação</th><th>2ª ação</th><th>3ª ação</th><th></th></tr></thead><tbody>
     ${c.eventos.map((e,i)=>evRow(c,e,i,gn)).join('')}</tbody></table></div>
-    <div class="row-actions"><button class="btn ghost sm" data-addrow="eventos">+ Evento personalizado</button></div>
-    ${c.eventos[IDX_VELOCIDADE]&&c.eventos[IDX_VELOCIDADE].monitorar?`<h4 style="margin:16px 0 6px">Regras de excesso de velocidade</h4><div class="hint">Cada regra: em qual via/limite vale, quantos % acima da velocidade da via dispara, por quantos segundos e qual a severidade.</div>
+    <div class="row-actions"><button class="btn ghost sm" data-addrow="eventos">+ Evento personalizado</button>${EVENTOS_BASE.some(n=>!c.eventos.some(e=>!e.custom&&e.evento===n))?`<select data-evrestore class="noprint" style="width:auto"><option value="">↺ Restaurar evento padrão…</option>${EVENTOS_BASE.filter(n=>!c.eventos.some(e=>!e.custom&&e.evento===n)).map(n=>`<option>${esc(n)}</option>`).join('')}</select>`:''}</div>
+    ${evVel(c)&&evVel(c).monitorar?`<h4 style="margin:16px 0 6px">Regras de excesso de velocidade</h4><div class="hint">Cada regra: em qual via/limite vale, quantos % acima da velocidade da via dispara, por quantos segundos e qual a severidade.</div>
     <div class="tw"><table style="min-width:640px"><thead><tr><th>Via / limite (ex.: até 60 km/h, todas)</th><th>Acima de (% da velocidade da via)</th><th>Por (segundos)</th><th>Severidade</th><th></th></tr></thead><tbody>
     ${c.velocidade.map((r,i)=>`<tr><td><input data-f="velocidade.${i}.via" value="${esc(r.via)}"></td><td><input type="number" min="0" max="100" data-f="velocidade.${i}.pct" value="${esc(r.pct)}"></td><td><input type="number" min="0" data-f="velocidade.${i}.seg" value="${esc(r.seg)}"></td>
      <td><select class="sev sv${SEVS.indexOf(r.sev)}" data-f="velocidade.${i}.sev"><option value="">—</option>${SEVS.map(x=>`<option ${r.sev===x?'selected':''}>${x}</option>`).join('')}</select></td><td><button class="btn ghost sm" data-delrow="velocidade.${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="5"><div class="empty">Nenhuma regra.</div></td></tr>'}</tbody></table></div>
@@ -761,7 +762,7 @@ function vFicha(c0){
     <div class="row-actions noprint"><button class="btn ghost sm" data-act="prorrogar" data-dias="7">Prorrogar 7 dias</button><button class="btn ghost sm" data-act="prorrogar" data-dias="15">Prorrogar 15 dias</button><button class="btn ghost sm" data-act="prorrogar" data-dias="30">Prorrogar 30 dias</button></div></div>
 
   <div class="card"><h3>Observações</h3><label class="f"><textarea data-f="notas">${esc(c.notas)}</textarea></label></div>
-  <div class="card noprint"><h3>Histórico de alterações</h3>${histAberto?'<div class="hist" id="histBox"><div class="muted">Carregando…</div></div>':'<button class="btn ghost sm" data-act="histShow">Mostrar histórico</button>'}</div>
+  <div class="card noprint"><h3>Histórico de alterações</h3>${histAberto?'<button class="btn ghost sm" data-act="histHide" style="margin-bottom:10px">✕ Fechar histórico</button><div class="hist" id="histBox"><div class="muted">Carregando…</div></div>':'<button class="btn ghost sm" data-act="histShow">Mostrar histórico</button>'}</div>
   <div class="savebar noprint"><div class="hbar" id="meta2">${metaHtml(c)}</div><button class="btn green" data-act="saveBack">✓ Salvar e ir para o início</button></div>
   </div></div>`;
 }
@@ -773,7 +774,7 @@ function evRow(c,e,i,gn){
    <td><select class="sev sv${SEVS.indexOf(e.sev)}" data-f="${p}.sev"><option value="">—</option>${SEVS.map(x=>`<option ${e.sev===x?'selected':''}>${x}</option>`).join('')}</select></td>
    <td class="gat"><select data-gat="${i}"><option value="">—</option>${GATILHOS.map(x=>`<option value="${esc(x)}" ${!e.gOutro&&e.gatilho===x?'selected':''}>${x}</option>`).join('')}<option value="__outro" ${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?'selected':''}>Outro (digitar)…</option></select>${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?`<input style="margin-top:4px" data-f="${p}.gatilho" value="${esc(e.gatilho)}" placeholder="ex.: 7 s">`:''}</td>
    ${e.acoes.map(acao).join('')}
-   <td>${e.custom?`<button class="btn ghost sm" data-delrow="${p}">✕</button>`:''}</td></tr>`;
+   <td><button class="btn ghost sm" data-delrow="${p}" title="Excluir este evento da ficha do cliente">✕</button></td></tr>`;
 }
 async function loadHist(c){try{const h=await rpc('getHistorico',c.id);const b=$('#histBox');if(b)b.innerHTML=h.map(x=>`<div>${esc(x.txt)}<small>${esc(x.ts)} · ${esc(x.user)}</small></div>`).join('')||'<div class="muted">Sem registros.</div>'}catch(e){const b=$('#histBox');if(b)b.textContent='Erro: '+e.message}}
 
@@ -850,6 +851,7 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='ganttAll'){ganttAll=t.checked;render();return}
   const c=view==='ficha'&&get(fichaId);if(!c)return;
+  if(t.dataset.evrestore!==undefined){if(!t.value)return;c.eventos.push(novoEvento(t.value));c.eventos.sort((x,y)=>(x.custom?1000:EVENTOS_BASE.indexOf(x.evento))-(y.custom?1000:EVENTOS_BASE.indexOf(y.evento)));touch(c,'Evento restaurado: '+t.value);renderKeep();return}
   if(t.dataset.gat!==undefined){const ev=c.eventos[+t.dataset.gat];
     if(t.value==='__outro'){ev.gOutro=true;ev.gatilho=''}else{ev.gOutro=false;ev.gatilho=t.value}
     touch(c,`Eventos: gatilho de ${ev.evento||'evento'} → ${ev.gatilho||'(outro)'}`);renderKeep();return}
@@ -865,9 +867,9 @@ document.addEventListener('change',e=>{
   else if(t.dataset.mask==='placa'){val=t.value=placasLista(t.value).join('\n')}
   else if(t.type==='text'||t.tagName==='TEXTAREA'){if(t.dataset.mask!=='brl')val=t.value=t.value.trim()}
   const mEv=/^eventos\.(\d+)\.monitorar$/.exec(path);
-  if(mEv&&!val){const ev=c.eventos[+mEv[1]];const tem=ev.sev||ev.gatilho||ev.acoes.some(a=>a.t)||(+mEv[1]===IDX_VELOCIDADE&&c.velocidade.length);
+  if(mEv&&!val){const ev=c.eventos[+mEv[1]];const tem=ev.sev||ev.gatilho||ev.acoes.some(a=>a.t)||(ev.evento==='Excesso de velocidade'&&!ev.custom&&c.velocidade.length);
     if(tem&&!confirm('Desmarcar "monitorar" apaga severidade, gatilho e ações desta linha. Continuar?')){t.checked=true;return}
-    ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}];if(+mEv[1]===IDX_VELOCIDADE)c.velocidade=[]}
+    ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}];if(ev.evento==='Excesso de velocidade'&&!ev.custom)c.velocidade=[]}
   const {o,last,old}=setPath(c,path,val);
   const top=path.split('.')[0],nomeCampo=last;let log=`${SECLOG[top]||'Cadastro'}: ${nomeCampo} → ${isChk?(val?'sim':'não'):(String(val).length>60||last==='placas'||last==='notas'?'(atualizado)':val||'(vazio)')}`;
   let rerender=isChk||t.tagName==='SELECT'||t.type==='radio';
@@ -905,6 +907,7 @@ document.addEventListener('click',async e=>{
     touch(c,'Linha adicionada ('+last+')');renderKeep();return}
   if(d.delrow&&c){const k=d.delrow.split('.'),idx=+k.pop(),arr=resolve(c,k.join('.')),last=k[k.length-1];
     if(last==='grupos'){const g=arr[idx];if(!confirm(`Remover o grupo "${g.nome||'sem nome'}"?`))return;c.eventos.forEach(ev=>ev.acoes.forEach(a=>{if(a.t==='grupo'&&a.g===g.nome)a.g=''}))}
+    if(last==='eventos'){const ev=arr[idx];if(!confirm(`Excluir o evento "${ev.evento||'sem nome'}" da ficha deste cliente?`))return;if(ev.evento==='Excesso de velocidade'&&!ev.custom)c.velocidade=[];arr.splice(idx,1);touch(c,'Evento excluído: '+(ev.evento||'sem nome'));renderKeep();return}
     arr.splice(idx,1);touch(c,'Linha removida ('+last+')');renderKeep();return}
   const a=d.act;
   if(a==='simular'&&c){simLoad(c.id);view='precos';render();window.scrollTo(0,0);return}
@@ -918,6 +921,7 @@ document.addEventListener('click',async e=>{
     try{await rpc('deleteCliente',c.id);S.clientes=S.clientes.filter(x=>x!==c);view='painel';fichaId=null;render()}catch(err){setState('Erro: '+err.message,true)}}
   if(a==='prorrogar'){const n=+d.dias;c.fim=addDays(c.fim||today(),n);c.fimReal='';c.resultado='Prorrogado';touch(c,`Piloto prorrogado em ${n} dias → novo fim previsto ${fdate(c.fim)}`);renderKeep()}
   if(a==='histShow'){histAberto=true;renderKeep()}
+  if(a==='histHide'){histAberto=false;renderKeep()}
   if(a==='evTodos'){c.eventos.forEach(ev=>ev.monitorar=true);touch(c,'Eventos: todos marcados para monitorar');renderKeep()}
   if(a==='evLimpar'){if(!confirm('Limpar severidade, gatilho e ações de todos os eventos?'))return;c.eventos.forEach(ev=>{ev.monitorar=false;ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}]});touch(c,'Eventos: matriz limpa');renderKeep()}
   if(a==='evSugestao'){if(!confirm('Marcar os 8 eventos de controle imediato e preencher severidade, gatilho e 1ª ação com a sugestão da matriz padrão? Isso substitui o que já está nesses eventos.'))return;
