@@ -36,14 +36,17 @@ header .btn.ghost{color:#fff;border-color:rgba(255,255,255,.35)}
 .ptop select{min-width:260px}.ptop .grow{flex:1}
 .in{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;box-sizing:border-box;font:inherit}
 .in:disabled{background:#F3F4F8;color:#9CA0B5}.in.bad{border-color:var(--red);background:var(--red-50)}
-.ptab{min-width:960px}.ptab td{vertical-align:middle}
+.tw .ptab{min-width:0}.ptab td{vertical-align:middle;padding:7px 10px}.ptab th{padding:8px 10px}
 .vr{text-align:right;white-space:nowrap}
 .mut{font-size:11px;color:var(--muted)}
-.dsc-in{display:flex;gap:4px}.dsc-in select.in{width:74px;flex:none}.dsc-in input.in{flex:1;min-width:0;width:auto}
+.dsc-in{display:flex;gap:4px}.dsc-in select.in{width:64px;flex:none}.dsc-in input.in{flex:none;width:76px}
 .dsc{color:#A32227;font-size:11px}
+.eqs{display:flex;gap:6px}.eqs label{display:block;width:88px}.eqs .mut{white-space:nowrap}.eqs .in{width:100%}
+.fres{display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:var(--indigo-50);border-radius:10px;padding:10px 14px;margin-top:12px;font-size:13px}
+.fres .tot{margin-left:auto;font-size:14px}
 .ptot{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
-.ptot .kpi{flex:1;min-width:210px;padding:10px 14px}
-.ptot .kpi .v{font-size:22px}
+.ptot .kpi{flex:1;min-width:210px;padding:8px 14px}
+.ptot .kpi .v{font-size:20px}
 .ptot .kpi.main{background:var(--indigo);color:#fff}.ptot .kpi.main .l,.ptot .kpi.main .n{color:#C9CBF0}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
@@ -441,7 +444,7 @@ function novoCliente(nome,extra={}){return Object.assign({
   hubspot:{link:'',id:'',empresa:nome,responsavel:'',potencial:'',regiao:''},
   equip:Object.fromEntries(EQUIPS.map(e=>[e,{qtd:0}])),instalacao:'',painel:'',one:[],
   eventos:EVENTOS_BASE.map(novoEvento),velocidade:[],frota:{todos:false,tipo:'',placas:''},grupos:[],
-  inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:'',desconto:descVazio()},extra)}
+  inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:'',desconto:descVazio(),posicoes:0},extra)}
 const LEGADO=['etapas','matriz','sideLetter','ultimoRepasse','usuarios','acesso','escopo','limiar','tolerancia','criticidadeConfirmada','frotaQtd','frotaIncompleta','modalidade','veiculos','precoManual','cnpj','liberadoComPendencias'];
 function normaliza(c){
   const b=novoCliente(c.nome||'');
@@ -483,64 +486,86 @@ function touch(c,log){if(log)(pendLogs[c.id]=pendLogs[c.id]||[]).push(log);setSt
  * Preços FIXOS (só mudam por alteração de código). Negociação = desconto por cliente
  * (em % ou R$ sobre o total da linha), com motivo obrigatório, gravado na ficha e no histórico. */
 const PRECOS=[
-  {k:'video',nome:'Videotelemetria',unid:'por veículo / mês',valor:89,un:'veículos'},
-  {k:'tele',nome:'Telemetria',unid:'por veículo / mês',valor:39,un:'veículos'},
-  {k:'pos',nome:'Posição em horário comercial',unid:'por posição / mês',valor:7500,un:'posições'}];
+  {k:'video',nome:'Videotelemetria',unid:'por veículo / mês',valor:89,eq:['Câmera Fadiga','StreaMax']},
+  {k:'tele',nome:'Telemetria',unid:'por veículo / mês',valor:39,eq:['OBD','Instalado','Rede CAN']},
+  {k:'pos',nome:'Posição em horário comercial',unid:'por posição / mês',valor:7500,eq:null}];
 const brl=n=>(+n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const num=v=>{const n=parseFloat(String(v??'').replace(/\./g,'').replace(',','.'));return isFinite(n)&&n>0?n:0};
-let precoCli='',simQ={video:'',tele:'',pos:'',meses:'1'},simD=descVazio();
-function simLoad(id){precoCli=id||'';simD=id&&get(id)?JSON.parse(JSON.stringify(get(id).desconto)):descVazio()}
-function simCalc(){
-  const q={video:num(simQ.video),tele:num(simQ.tele),pos:num(simQ.pos)},m=Math.max(1,Math.floor(num(simQ.meses))||1);
-  const linhas=PRECOS.map(p=>{const bruto=q[p.k]*p.valor,d=precoCli?simD[p.k]:null,v=d?num(d.valor):0;
-    let desc=!d||!v?0:d.tipo==='pct'?bruto*Math.min(v,100)/100:Math.min(v,bruto);
+const qi=v=>Math.floor(num(v));
+let precoCli='',simE={},simPos='',simMeses='1',simD=descVazio(),simSnap='';
+const simState=()=>JSON.stringify({e:simE,p:simPos,d:simD});
+const simDirty=()=>!!precoCli&&simState()!==simSnap;
+function simLoad(id){
+  const c=id&&get(id)?get(id):null;precoCli=c?c.id:'';simE={};
+  EQUIPS.forEach(e=>{simE[e]=c&&+c.equip[e].qtd>0?String(c.equip[e].qtd):''});
+  simPos=c&&+c.posicoes>0?String(c.posicoes):'';
+  simD=c?JSON.parse(JSON.stringify(c.desconto)):descVazio();simSnap=simState()}
+function calcPreco(q,descs,meses){
+  const m=Math.max(1,Math.floor(num(meses))||1);
+  const linhas=PRECOS.map(p=>{const bruto=q[p.k]*p.valor,d=descs?descs[p.k]:null,v=d?num(d.valor):0;
+    const desc=!d||!v?0:d.tipo==='pct'?bruto*Math.min(v,100)/100:Math.min(v,bruto);
     return{p,q:q[p.k],bruto,desc,liq:bruto-desc,d,v}});
-  const mensal=linhas.reduce((a,l)=>a+l.liq,0),bruto=linhas.reduce((a,l)=>a+l.bruto,0);
-  const semMotivo=linhas.filter(l=>l.v>0&&!(l.d.motivo||'').trim());
-  return{linhas,m,mensal,bruto,desc:bruto-mensal,periodo:mensal*m,semMotivo}}
+  const mensal=linhas.reduce((x,l)=>x+l.liq,0),bruto=linhas.reduce((x,l)=>x+l.bruto,0);
+  return{linhas,m,mensal,bruto,desc:bruto-mensal,periodo:mensal*m,semMotivo:linhas.filter(l=>l.v>0&&!((l.d.motivo||'').trim()))}}
+const somaEq=(g,f)=>g.reduce((x,e)=>x+f(e),0);
+const qtdSim=()=>({video:somaEq(PRECOS[0].eq,e=>qi(simE[e])),tele:somaEq(PRECOS[1].eq,e=>qi(simE[e])),pos:qi(simPos)});
+const qtdCliente=c=>({video:somaEq(PRECOS[0].eq,e=>+c.equip[e].qtd||0),tele:somaEq(PRECOS[1].eq,e=>+c.equip[e].qtd||0),pos:+c.posicoes||0});
+const simCalc=()=>calcPreco(qtdSim(),precoCli?simD:null,simMeses);
+function fichaResumoHtml(c){
+  const q=qtdCliente(c);if(!q.video&&!q.tele&&!q.pos)return '<span class="mut">Informe as quantidades para ver o valor mensal.</span>';
+  const r=calcPreco(q,c.desconto,1);
+  return `<span><b>Videotelemetria</b> ${q.video} veíc.</span><span><b>Telemetria</b> ${q.tele} veíc.</span><span><b>Posições</b> ${q.pos}</span><span class="tot">Total mensal: <b>${brl(r.mensal)}</b>${r.desc?` <small>(desconto − ${brl(r.desc)})</small>`:''}</span>`}
+const descTxt=l=>l.desc?'− '+brl(l.desc)+(l.d.tipo==='pct'?' ('+Math.min(l.v,100)+'%)':''):'';
+const resumoTxt=r=>r.desc?'tabela '+brl(r.bruto)+' · desconto − '+brl(r.desc):'sem desconto';
+const qtTxt=l=>'= '+l.q+' '+(l.p.k==='pos'?(l.q===1?'posição':'posições'):(l.q===1?'veículo':'veículos'));
 function vPrecos(){
   const cs=[...S.clientes].sort((x,y)=>x.nome.localeCompare(y.nome,'pt-BR')),cli=!!precoCli,r=simCalc(),dis=cli?'':'disabled';
   const rows=PRECOS.map((p,i)=>{const l=r.linhas[i],d=simD[p.k];
-    return `<tr><td><b>${esc(p.nome)}</b><div class="mut">${p.unid}</div></td>
-    <td class="vr">${brl(p.valor)}</td>
-    <td style="width:100px"><input class="in" data-sq="${p.k}" inputmode="numeric" placeholder="0" value="${esc(simQ[p.k])}"></td>
+    const eqc=p.eq?p.eq.map(e=>`<label><span class="mut">${esc(e)}</span><input class="in" data-se="${esc(e)}" inputmode="numeric" placeholder="0" value="${esc(simE[e])}"></label>`).join(''):`<label><span class="mut">Posições</span><input class="in" data-sq="pos" inputmode="numeric" placeholder="0" value="${esc(simPos)}"></label>`;
+    return `<tr><td style="white-space:nowrap"><b>${esc(p.nome)}</b><div class="mut">${brl(p.valor)} · ${p.unid}</div><div class="mut" id="qt-${p.k}">${qtTxt(l)}</div></td>
+    <td><div class="eqs">${eqc}</div></td>
     <td class="vr" id="sub-${p.k}">${brl(l.bruto)}</td>
-    <td style="width:200px"><div class="dsc-in"><select class="in" data-sdt="${p.k}" ${dis}><option value="pct" ${d.tipo==='pct'?'selected':''}>%</option><option value="val" ${d.tipo==='val'?'selected':''}>R$</option></select><input class="in" data-sdv="${p.k}" inputmode="decimal" placeholder="0" ${dis} value="${d.valor?esc(String(d.valor).replace('.',',')):''}"></div></td>
-    <td style="min-width:200px"><input class="in" data-sdm="${p.k}" placeholder="${cli?'Motivo (obrigatório)':'Selecione um cliente'}" ${dis} value="${esc(d.motivo)}"></td>
+    <td style="width:150px"><div class="dsc-in"><select class="in" data-sdt="${p.k}" ${dis}><option value="pct" ${d.tipo==='pct'?'selected':''}>%</option><option value="val" ${d.tipo==='val'?'selected':''}>R$</option></select><input class="in" data-sdv="${p.k}" inputmode="decimal" placeholder="0" ${dis} value="${d.valor?esc(String(d.valor).replace('.',',')):''}"></div></td>
+    <td style="min-width:170px"><input class="in" data-sdm="${p.k}" placeholder="${cli?'Motivo (obrigatório)':'Selecione um cliente'}" ${dis} value="${esc(d.motivo)}"></td>
     <td class="vr"><b id="liq-${p.k}">${brl(l.liq)}</b><div class="dsc" id="dsc-${p.k}">${descTxt(l)}</div></td></tr>`}).join('');
   return `<div class="card" style="padding:14px 16px"><h3 style="margin-bottom:10px">Tabela de preços e simulador</h3>
-   <div class="ptop"><div><label>Cliente (para aplicar e salvar desconto)</label><select class="in" id="simCli"><option value="">Sem cliente — tabela padrão</option>${cs.map(c=>`<option value="${esc(c.id)}" ${c.id===precoCli?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
-    <div style="width:130px"><label>Meses de contrato</label><input class="in" data-sq="meses" inputmode="numeric" value="${esc(simQ.meses)}"></div>
-    <div class="grow"></div>${cli?'<button class="btn" data-act="simSalvar">Salvar desconto deste cliente</button>':''}</div>
-   <div class="tw"><table class="ptab"><thead><tr><th>Item</th><th class="vr">Preço de tabela</th><th>Quantidade</th><th class="vr">Subtotal</th><th>Desconto</th><th>Motivo do desconto</th><th class="vr">Total / mês</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div class="ptop"><div><label>Cliente (as quantidades e o desconto são gravados na ficha dele)</label><select class="in" id="simCli"><option value="">Sem cliente — simulação livre</option>${cs.map(c=>`<option value="${esc(c.id)}" ${c.id===precoCli?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
+    <div style="width:130px"><label>Meses de contrato</label><input class="in" data-sq="meses" inputmode="numeric" value="${esc(simMeses)}"></div>
+    <div class="grow"></div>${cli?'<button class="btn ghost" data-act="simVoltar">Voltar sem salvar</button><button class="btn" data-act="simSalvarVoltar">Salvar e voltar para o cliente</button>':'<span class="mut">Sem cliente: simulação livre, nada é gravado.</span>'}</div>
+   <div class="tw"><table class="ptab"><thead><tr><th>Item e preço de tabela</th><th>Quantidades</th><th class="vr">Subtotal</th><th>Desconto</th><th>Motivo do desconto</th><th class="vr">Total / mês</th></tr></thead><tbody>${rows}</tbody></table></div>
    <div class="ptot"><div class="kpi main"><div class="l">Total mensal a cobrar</div><div class="v" id="tM">${brl(r.mensal)}</div><div class="n" id="tMn">${resumoTxt(r)}</div></div>
     <div class="kpi"><div class="l">Desconto total / mês</div><div class="v" id="tD">${brl(r.desc)}</div><div class="n">${cli?'valores do cliente selecionado':'selecione um cliente para negociar'}</div></div>
     <div class="kpi"><div class="l" id="tPl">Total no período (${r.m} ${r.m===1?'mês':'meses'})</div><div class="v" id="tP">${brl(r.periodo)}</div><div class="n" id="tPn">${r.m} × ${brl(r.mensal)}</div></div></div>
-   <p class="note" style="margin:10px 0 0">Valores cobrados do cliente final pela Cobli. Preços fixos; a negociação entra como desconto por cliente (em R$, incide sobre o total da linha) e fica no histórico com autor e motivo.</p></div>`}
-const descTxt=l=>l.desc?'− '+brl(l.desc)+(l.d.tipo==='pct'?' ('+Math.min(l.v,100)+'%)':''):'';
-const resumoTxt=r=>r.desc?'tabela '+brl(r.bruto)+' · desconto − '+brl(r.desc):'sem desconto';
+   <p class="note" style="margin:8px 0 0">Preços fixos cobrados do cliente final · Telemetria = OBD + Instalado + Rede CAN · Videotelemetria = Câmera Fadiga + StreaMax · desconto em R$ incide sobre o total da linha, com motivo e histórico.</p></div>`}
 function simRefresh(){
   const r=simCalc(),set=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t};
-  r.linhas.forEach(l=>{const k=l.p.k;set('sub-'+k,brl(l.bruto));set('liq-'+k,brl(l.liq));set('dsc-'+k,descTxt(l));
+  r.linhas.forEach(l=>{const k=l.p.k;set('sub-'+k,brl(l.bruto));set('liq-'+k,brl(l.liq));set('dsc-'+k,descTxt(l));set('qt-'+k,qtTxt(l));
     const m=document.querySelector('[data-sdm='+k+']');if(m)m.classList.toggle('bad',!!precoCli&&l.v>0&&!(l.d.motivo||'').trim())});
   set('tM',brl(r.mensal));set('tMn',resumoTxt(r));set('tD',brl(r.desc));set('tP',brl(r.periodo));
   set('tPl','Total no período ('+r.m+' '+(r.m===1?'mês':'meses')+')');set('tPn',r.m+' × '+brl(r.mensal))}
 document.addEventListener('input',e=>{const t=e.target,d=t.dataset;if(view!=='precos'||!d)return;
-  if(d.sq){simQ[d.sq]=t.value;simRefresh()}
+  if(d.se!==undefined){simE[d.se]=t.value;simRefresh()}
+  else if(d.sq==='pos'){simPos=t.value;simRefresh()}
+  else if(d.sq==='meses'){simMeses=t.value;simRefresh()}
   else if(d.sdv){simD[d.sdv].valor=t.value;simRefresh()}
   else if(d.sdm){simD[d.sdm].motivo=t.value;simRefresh()}});
-document.addEventListener('change',e=>{const t=e.target,d=t.dataset;if(view!=='precos')return;
-  if(t.id==='simCli'){simLoad(t.value);render();return}
+document.addEventListener('change',async e=>{const t=e.target,d=t.dataset;if(view!=='precos')return;
+  if(t.id==='simCli'){const novo=t.value;if(simDirty()){t.value=precoCli;if(!await guardaSim())return}simLoad(novo);render();return}
   if(d&&d.sdt){simD[d.sdt].tipo=t.value;simRefresh()}});
-function simSalvar(){
-  const c=get(precoCli);if(!c)return;const r=simCalc();
-  if(r.semMotivo.length){alert('Informe o motivo do desconto em: '+r.semMotivo.map(l=>l.p.nome).join(', ')+'.');return}
+async function guardaSim(){
+  if(confirm('Há alterações não salvas neste cliente no simulador.\n\nOK = salvar agora\nCancelar = ver outras opções'))return simSalvar(false);
+  return confirm('Descartar as alterações não salvas?\n\nOK = descartar e continuar\nCancelar = continuar editando')}
+function simSalvar(volta){
+  const c=get(precoCli);if(!c)return true;const r=simCalc();
+  if(r.semMotivo.length){alert('Informe o motivo do desconto em: '+r.semMotivo.map(l=>l.p.nome).join(', ')+'.');return false}
+  let mudou=0;
+  EQUIPS.forEach(e=>{const n=qi(simE[e]),o=+c.equip[e].qtd||0;if(n!==o){c.equip[e].qtd=n;touch(c,'Equipamentos: '+e+' → '+n);mudou++}});
+  const np=qi(simPos);if(np!==(+c.posicoes||0)){c.posicoes=np;touch(c,'Posições de monitoramento → '+np);mudou++}
   const novo={};PRECOS.forEach(p=>{const d=simD[p.k],v=num(d.valor);novo[p.k]={tipo:d.tipo,valor:v,motivo:v?d.motivo.trim():''}});
   const txt=k=>{const d=novo[k];return d.valor?(d.tipo==='pct'?d.valor+'%':brl(d.valor))+' — '+d.motivo:'sem desconto'};
-  const mudou=PRECOS.filter(p=>JSON.stringify(novo[p.k])!==JSON.stringify(c.desconto[p.k]));
-  if(!mudou.length){setState('Nenhuma alteração de desconto');return}
-  c.desconto=novo;mudou.forEach(p=>touch(c,'Preço: desconto '+p.nome+' → '+txt(p.k)));
-  simLoad(c.id);renderKeep();setState('Desconto salvo ✓')}
+  PRECOS.filter(p=>JSON.stringify(novo[p.k])!==JSON.stringify(c.desconto[p.k])).forEach(p=>{c.desconto[p.k]=novo[p.k];touch(c,'Preço: desconto '+p.nome+' → '+txt(p.k));mudou++});
+  setState(mudou?'Salvo no cliente ✓':'Nenhuma alteração');
+  simLoad(c.id);if(volta)openFicha(c.id);return true}
 
 /* ============ VIEWS ============ */
 const pctClass=p=>p>=100?'':p>=60?'warn':'bad';
@@ -666,8 +691,9 @@ function vFicha(c0){
 
   ${blocoHead(c,1,'Equipamentos enviados para o piloto: informe a quantidade de cada tipo (zero = não enviado).')}
     <div class="eqg">${EQUIPS.map(e=>`<div class="eq ${+c.equip[e].qtd>0?'on':''}"><b>${e}</b><input type="number" min="0" data-f="equip.${e}.qtd" data-n="1" data-eq="1" value="${c.equip[e].qtd||''}" placeholder="quantidade"></div>`).join('')}</div>
-    <div class="grid2">${fld('Data de instalação','instalacao',c.instalacao,'date')}</div>
-    <div class="row-actions"><button class="btn ghost sm" data-act="simular">💰 Simular valor</button></div></div>
+    <div class="grid2">${fld('Data de instalação','instalacao',c.instalacao,'date')}${fld('Posições de monitoramento (horário comercial)','posicoes',c.posicoes||'','number')}</div>
+    <div class="fres" id="fResumo">${fichaResumoHtml(c)}</div>
+    <div class="row-actions"><button class="btn ghost sm" data-act="simular">💰 Abrir no simulador</button></div></div>
 
   ${blocoHead(c,2)}
     <div class="radios"><span class="lbl">Painel liberado para a GR Parcerias?</span>${[['sim','Sim'],['nao','Não']].map(([v,l])=>`<label class="rd"><input type="radio" name="painel" data-f="painel" value="${v}" ${c.painel===v?'checked':''}> ${l}</label>`).join('')}</div>
@@ -756,10 +782,10 @@ async function saveAndBack(c){
 /* ============ EVENTOS ============ */
 function setPath(o,path,val){const k=path.split('.');for(let j=0;j<k.length-1;j++)o=o[k[j]];const last=k[k.length-1],old=o[last];o[last]=val;return{o,last,old}}
 const resolve=(o,path)=>path.split('.').reduce((a,k)=>a[k],o);
-const SECLOG={hubspot:'Referência',equip:'Equipamentos',instalacao:'Equipamentos',painel:'Painel',one:'Acesso ONE',eventos:'Eventos',velocidade:'Eventos (velocidade)',frota:'Frota',grupos:'Grupos',inicio:'Piloto',fim:'Piloto',fimReal:'Piloto',resultado:'Piloto',reuniaoPainel:'Piloto'};
+const SECLOG={posicoes:'Posições',hubspot:'Referência',equip:'Equipamentos',instalacao:'Equipamentos',painel:'Painel',one:'Acesso ONE',eventos:'Eventos',velocidade:'Eventos (velocidade)',frota:'Frota',grupos:'Grupos',inicio:'Piloto',fim:'Piloto',fimReal:'Piloto',resultado:'Piloto',reuniaoPainel:'Piloto'};
 function grupoOptsHtml(c,g){const gn=gruposNomes(c);return `<option value="">escolha o grupo…</option>${gn.map(x=>`<option value="${esc(x)}" ${g===x?'selected':''}>${esc(x)}</option>`).join('')}${g&&!gn.includes(g)?`<option value="${esc(g)}" selected>${esc(g)} (grupo removido)</option>`:''}`}
 function refreshGrupoOpts(c){$$('select[data-f$=".g"]').forEach(el=>{const m=el.dataset.f.match(/^eventos\.(\d+)\.acoes\.(\d+)\.g$/);if(m)el.innerHTML=grupoOptsHtml(c,c.eventos[+m[1]].acoes[+m[2]].g)})}
-function updateMeta(c){const m=$('#meta');if(m)m.innerHTML=metaHtml(c);const m2=$('#meta2');if(m2)m2.innerHTML=metaHtml(c);const i=$('#idx');if(i)i.innerHTML=idxHtml(c);const pi=pilotoInfo(c),p=$('#pilSit');if(p)p.innerHTML=`Situação: <b>${pilotoTxt(pi)}</b>${pi.total?` · ${pi.pct}% do prazo`:''}`;
+function updateMeta(c){const fr=$('#fResumo');if(fr)fr.innerHTML=fichaResumoHtml(c);const m=$('#meta');if(m)m.innerHTML=metaHtml(c);const m2=$('#meta2');if(m2)m2.innerHTML=metaHtml(c);const i=$('#idx');if(i)i.innerHTML=idxHtml(c);const pi=pilotoInfo(c),p=$('#pilSit');if(p)p.innerHTML=`Situação: <b>${pilotoTxt(pi)}</b>${pi.total?` · ${pi.pct}% do prazo`:''}`;
   const q=$('#placasQtd');if(q)q.textContent=`${placasLista(c.frota.placas).length} placa(s) identificada(s).`;
   $$('.bloco').forEach(el=>{const s=+el.id.slice(1),b=blocos(c)[s];el.classList.toggle('ok',b.completo);const bn=$('.bn',el);if(bn)bn.textContent=b.completo?'✓':s+1;const bd=$('h3 .badge',el);if(bd){bd.textContent=`${b.ok}/${b.total}`;bd.className='badge b-'+(b.completo?'ok':b.ok?'warn':'Pendente')}})}
 document.addEventListener('change',e=>{
@@ -801,9 +827,10 @@ async function carregaNotif(){try{notif=await rpc('getNotificacoes');if(view==='
 document.addEventListener('click',async e=>{
   const t=e.target.closest('[data-open],[data-view],[data-filtro],[data-act],[data-addrow],[data-delrow],[data-goto]');
   if(!t)return;const d=t.dataset,c=view==='ficha'&&get(fichaId);
+  if(view==='precos'&&simDirty()&&(d.open||(d.view&&d.view!=='precos')||d.act==='newClient')){if(!await guardaSim())return}
   if(d.open){openFicha(d.open,d.goto);return}
   if(d.goto!==undefined&&!d.open){scrollBloco(+d.goto);return}
-  if(d.view){view=d.view;render();if(view==='notif'&&!notif)carregaNotif();return}
+  if(d.view){view=d.view;if(view==='precos')simLoad(precoCli);render();if(view==='notif'&&!notif)carregaNotif();return}
   if(d.filtro){filtro=d.filtro;render();return}
   if(d.addrow&&c){const path=d.addrow,arr=resolve(c,path),last=path.split('.').pop();
     if(last==='one')arr.push({nome:'',email:''});
@@ -817,7 +844,8 @@ document.addEventListener('click',async e=>{
     arr.splice(idx,1);touch(c,'Linha removida ('+last+')');renderKeep();return}
   const a=d.act;
   if(a==='simular'&&c){simLoad(c.id);view='precos';render();window.scrollTo(0,0);return}
-  if(a==='simSalvar'){simSalvar();return}
+  if(a==='simSalvarVoltar'){simSalvar(true);return}
+  if(a==='simVoltar'){if(simDirty()&&!confirm('Descartar as alterações e voltar para o cliente?'))return;openFicha(precoCli);return}
   if(a==='saveBack'){await saveAndBack(c)}
   if(a==='newClient'){const nome=prompt('Nome do cliente / piloto:');if(!nome||!nome.trim())return;
     const n=novoCliente(nome.trim());S.clientes.unshift(n);touch(n,'Piloto cadastrado');openFicha(n.id)}
@@ -846,7 +874,7 @@ document.addEventListener('click',async e=>{
 function n_testeMsg(){return notif&&notif.testeEmail?`MODO TESTE: o resumo será enviado só para ${notif.testeEmail} (Slack + e-mail). Continuar?`:'Enviar agora o resumo para o canal e as mensagens diretas aos responsáveis?'}
 const toCsv=rows=>'﻿'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n');
 function dl(name,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
-window.addEventListener('beforeunload',e=>{if(Object.values(salvando).some(Boolean)||Object.values(pendLogs).some(l=>l&&l.length)){e.preventDefault();e.returnValue=''}});
+window.addEventListener('beforeunload',e=>{if(Object.values(salvando).some(Boolean)||Object.values(pendLogs).some(l=>l&&l.length)||simDirty()){e.preventDefault();e.returnValue=''}});
 
 /* ============ INÍCIO ============ */
 (async()=>{
