@@ -1,4 +1,5 @@
 {
+  "functions": { "api/pdf.js": { "maxDuration": 60, "includeFiles": "node_modules/@sparticuz/chromium/**" } },
   "crons": [{ "path": "/api/cron", "schedule": "0 11 * * 1-5" }],
   "headers": [
     { "source": "/(.*)", "headers": [
