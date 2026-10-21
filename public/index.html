@@ -31,14 +31,20 @@ header .btn.ghost{color:#fff;border-color:rgba(255,255,255,.35)}
 .btn.green{background:var(--cgreen);color:var(--indigo);font-weight:600}.btn.green:hover{background:#0BD9AC}
 .btn.sm{padding:4px 10px;font-size:12px}
 .btn.danger{background:var(--red)}
-.sim-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.sim-g label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
-.sim-g input,.sim-g select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;box-sizing:border-box}
-.sim-tot{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
-.sim-tot .kpi{flex:1;min-width:200px}
-.sim-tot .kpi.main{background:var(--indigo);color:#fff}.sim-tot .kpi.main .l,.sim-tot .kpi.main .n{color:#C9CBF0}
-td.num,th.num{text-align:right;white-space:nowrap}
-.dsc{color:#A32227}
+.ptop{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.ptop label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.ptop select{min-width:260px}.ptop .grow{flex:1}
+.in{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;box-sizing:border-box;font:inherit}
+.in:disabled{background:#F3F4F8;color:#9CA0B5}.in.bad{border-color:var(--red);background:var(--red-50)}
+.ptab{min-width:960px}.ptab td{vertical-align:middle}
+.vr{text-align:right;white-space:nowrap}
+.mut{font-size:11px;color:var(--muted)}
+.dsc-in{display:flex;gap:4px}.dsc-in select.in{width:74px;flex:none}.dsc-in input.in{flex:1;min-width:0;width:auto}
+.dsc{color:#A32227;font-size:11px}
+.ptot{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+.ptot .kpi{flex:1;min-width:210px;padding:10px 14px}
+.ptot .kpi .v{font-size:22px}
+.ptot .kpi.main{background:var(--indigo);color:#fff}.ptot .kpi.main .l,.ptot .kpi.main .n{color:#C9CBF0}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
 .kpi .l{font-size:12px;color:var(--muted)}.kpi .v{font-size:26px;font-weight:600;margin-top:2px}.kpi .n{font-size:11px;color:var(--muted)}
@@ -492,33 +498,33 @@ function simCalc(){
   const mensal=linhas.reduce((a,l)=>a+l.liq,0),bruto=linhas.reduce((a,l)=>a+l.bruto,0);
   const semMotivo=linhas.filter(l=>l.v>0&&!(l.d.motivo||'').trim());
   return{linhas,m,mensal,bruto,desc:bruto-mensal,periodo:mensal*m,semMotivo}}
-function simResHtml(){
-  const r=simCalc();
-  return `<div class="tw" style="margin-top:12px"><table style="min-width:640px"><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Preço de tabela</th><th class="num">Subtotal</th><th class="num">Desconto</th><th class="num">Total / mês</th></tr></thead><tbody>
-  ${r.linhas.map(l=>`<tr><td>${esc(l.p.nome)}</td><td class="num">${l.q||'—'}</td><td class="num">${brl(l.p.valor)}</td><td class="num">${brl(l.bruto)}</td><td class="num ${l.desc?'dsc':''}">${l.desc?'− '+brl(l.desc)+(l.d.tipo==='pct'?' ('+Math.min(l.v,100)+'%)':''):'—'}</td><td class="num"><b>${brl(l.liq)}</b></td></tr>`).join('')}
-  </tbody></table></div>
-  <div class="sim-tot"><div class="kpi main"><div class="l">Total mensal a cobrar</div><div class="v">${brl(r.mensal)}</div>${r.desc?`<div class="n">tabela ${brl(r.bruto)} · desconto − ${brl(r.desc)}</div>`:'<div class="n">sem desconto</div>'}</div>
-  <div class="kpi"><div class="l">Total no período (${r.m} ${r.m===1?'mês':'meses'})</div><div class="v">${brl(r.periodo)}</div><div class="n">${r.m} × ${brl(r.mensal)}</div></div></div>
-  ${r.semMotivo.length?`<div class="falta" style="margin-top:12px">Informe o <b>motivo</b> do desconto em: ${r.semMotivo.map(l=>esc(l.p.nome)).join(', ')}. Sem motivo não é possível salvar.</div>`:''}`}
 function vPrecos(){
-  const cs=[...S.clientes].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
-  return `<div class="card"><h3>Tabela de preços</h3>
-   <div class="tw"><table style="min-width:520px"><thead><tr><th>Item</th><th>Unidade</th><th class="num">Valor</th></tr></thead><tbody>
-   ${PRECOS.map(p=>`<tr><td>${esc(p.nome)}</td><td>${p.unid}</td><td class="num"><b>${brl(p.valor)}</b></td></tr>`).join('')}</tbody></table></div>
-   <p class="note" style="margin:10px 0 0">Valores cobrados do cliente final pela Cobli. Os preços são fixos; negociações entram como <b>desconto por cliente</b>, abaixo.</p></div>
-  <div class="card"><h3>Simulador</h3>
-   <div class="sim-g"><div><label>Cliente (para aplicar e salvar desconto)</label><select id="simCli"><option value="">Sem cliente — tabela padrão</option>${cs.map(c=>`<option value="${esc(c.id)}" ${c.id===precoCli?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
-    ${PRECOS.map(p=>`<div><label>${p.nome} — qtd de ${p.un}</label><input data-sq="${p.k}" inputmode="numeric" placeholder="0" value="${esc(simQ[p.k])}"></div>`).join('')}
-    <div><label>Meses de contrato</label><input data-sq="meses" inputmode="numeric" value="${esc(simQ.meses)}"></div></div>
-   ${precoCli?`<h3 style="margin:16px 0 8px">Desconto para ${esc(get(precoCli).nome)}</h3>
-    <div class="sim-g">${PRECOS.map(p=>{const d=simD[p.k];return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px"><b style="font-size:13px">${p.nome}</b>
-      <div style="display:flex;gap:6px;margin-top:6px"><select data-sdt="${p.k}" style="max-width:90px"><option value="pct" ${d.tipo==='pct'?'selected':''}>%</option><option value="val" ${d.tipo==='val'?'selected':''}>R$</option></select>
-      <input data-sdv="${p.k}" inputmode="decimal" placeholder="0" value="${d.valor?esc(String(d.valor).replace('.',',')):''}"></div>
-      <input data-sdm="${p.k}" placeholder="Motivo do desconto (obrigatório)" value="${esc(d.motivo)}" style="margin-top:6px"></div>`}).join('')}</div>
-    <p class="note" style="margin:8px 0 0">O desconto em R$ incide sobre o total da linha. Tudo fica registrado no histórico do cliente (quem, quando, valor e motivo).</p>
-    <div class="row-actions"><button class="btn sm" data-act="simSalvar">Salvar desconto deste cliente</button></div>`:''}
-   <div id="simRes">${simResHtml()}</div></div>`}
-function simRefresh(){const r=$('#simRes');if(r)r.innerHTML=simResHtml()}
+  const cs=[...S.clientes].sort((x,y)=>x.nome.localeCompare(y.nome,'pt-BR')),cli=!!precoCli,r=simCalc(),dis=cli?'':'disabled';
+  const rows=PRECOS.map((p,i)=>{const l=r.linhas[i],d=simD[p.k];
+    return `<tr><td><b>${esc(p.nome)}</b><div class="mut">${p.unid}</div></td>
+    <td class="vr">${brl(p.valor)}</td>
+    <td style="width:100px"><input class="in" data-sq="${p.k}" inputmode="numeric" placeholder="0" value="${esc(simQ[p.k])}"></td>
+    <td class="vr" id="sub-${p.k}">${brl(l.bruto)}</td>
+    <td style="width:200px"><div class="dsc-in"><select class="in" data-sdt="${p.k}" ${dis}><option value="pct" ${d.tipo==='pct'?'selected':''}>%</option><option value="val" ${d.tipo==='val'?'selected':''}>R$</option></select><input class="in" data-sdv="${p.k}" inputmode="decimal" placeholder="0" ${dis} value="${d.valor?esc(String(d.valor).replace('.',',')):''}"></div></td>
+    <td style="min-width:200px"><input class="in" data-sdm="${p.k}" placeholder="${cli?'Motivo (obrigatório)':'Selecione um cliente'}" ${dis} value="${esc(d.motivo)}"></td>
+    <td class="vr"><b id="liq-${p.k}">${brl(l.liq)}</b><div class="dsc" id="dsc-${p.k}">${descTxt(l)}</div></td></tr>`}).join('');
+  return `<div class="card" style="padding:14px 16px"><h3 style="margin-bottom:10px">Tabela de preços e simulador</h3>
+   <div class="ptop"><div><label>Cliente (para aplicar e salvar desconto)</label><select class="in" id="simCli"><option value="">Sem cliente — tabela padrão</option>${cs.map(c=>`<option value="${esc(c.id)}" ${c.id===precoCli?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
+    <div style="width:130px"><label>Meses de contrato</label><input class="in" data-sq="meses" inputmode="numeric" value="${esc(simQ.meses)}"></div>
+    <div class="grow"></div>${cli?'<button class="btn" data-act="simSalvar">Salvar desconto deste cliente</button>':''}</div>
+   <div class="tw"><table class="ptab"><thead><tr><th>Item</th><th class="vr">Preço de tabela</th><th>Quantidade</th><th class="vr">Subtotal</th><th>Desconto</th><th>Motivo do desconto</th><th class="vr">Total / mês</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div class="ptot"><div class="kpi main"><div class="l">Total mensal a cobrar</div><div class="v" id="tM">${brl(r.mensal)}</div><div class="n" id="tMn">${resumoTxt(r)}</div></div>
+    <div class="kpi"><div class="l">Desconto total / mês</div><div class="v" id="tD">${brl(r.desc)}</div><div class="n">${cli?'valores do cliente selecionado':'selecione um cliente para negociar'}</div></div>
+    <div class="kpi"><div class="l" id="tPl">Total no período (${r.m} ${r.m===1?'mês':'meses'})</div><div class="v" id="tP">${brl(r.periodo)}</div><div class="n" id="tPn">${r.m} × ${brl(r.mensal)}</div></div></div>
+   <p class="note" style="margin:10px 0 0">Valores cobrados do cliente final pela Cobli. Preços fixos; a negociação entra como desconto por cliente (em R$, incide sobre o total da linha) e fica no histórico com autor e motivo.</p></div>`}
+const descTxt=l=>l.desc?'− '+brl(l.desc)+(l.d.tipo==='pct'?' ('+Math.min(l.v,100)+'%)':''):'';
+const resumoTxt=r=>r.desc?'tabela '+brl(r.bruto)+' · desconto − '+brl(r.desc):'sem desconto';
+function simRefresh(){
+  const r=simCalc(),set=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t};
+  r.linhas.forEach(l=>{const k=l.p.k;set('sub-'+k,brl(l.bruto));set('liq-'+k,brl(l.liq));set('dsc-'+k,descTxt(l));
+    const m=document.querySelector('[data-sdm='+k+']');if(m)m.classList.toggle('bad',!!precoCli&&l.v>0&&!(l.d.motivo||'').trim())});
+  set('tM',brl(r.mensal));set('tMn',resumoTxt(r));set('tD',brl(r.desc));set('tP',brl(r.periodo));
+  set('tPl','Total no período ('+r.m+' '+(r.m===1?'mês':'meses')+')');set('tPn',r.m+' × '+brl(r.mensal))}
 document.addEventListener('input',e=>{const t=e.target,d=t.dataset;if(view!=='precos'||!d)return;
   if(d.sq){simQ[d.sq]=t.value;simRefresh()}
   else if(d.sdv){simD[d.sdv].valor=t.value;simRefresh()}
