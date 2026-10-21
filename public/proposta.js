@@ -20,7 +20,7 @@ function propostaHtml(c){
   slides.push(`<section class="slide slide--dark"><div class="slide-content" style="justify-content:center;gap:40px">${lock()}
     <div class="tema-badge" style="margin-top:40px">Proposta de piloto</div>
     <h1 style="font-size:112px;font-weight:700;line-height:1.04;letter-spacing:-0.03em;max-width:1500px">Piloto de monitoramento <span style="color:var(--cobli-green)">${E(emp)}</span></h1>
-    <p class="s-subtitle" style="max-width:1200px">Veja como a Cobli e a GR Parcerias vão acompanhar a sua frota, evento a evento.${c.hubspot.regiao?' '+E(c.hubspot.regiao)+'.':''}</p></div></section>`);
+    <p class="s-subtitle" style="max-width:1200px">Veja como a Cobli vai acompanhar a sua frota, evento a evento. ${E(emp)}.</p></div></section>`);
   tone='dark';
   /* 2 escopo */
   add(`${nx()}${hd('Escopo','<strong>O que vamos</strong> acompanhar')}
@@ -51,6 +51,21 @@ function propostaHtml(c){
     add(`${nx()}${hd('Excesso de velocidade','<strong>Regras</strong> de velocidade')}
      <table class="cobli-table tev"><thead><tr><th>Via / limite</th><th>Acima de</th><th>Por</th><th>Severidade</th></tr></thead><tbody>
      ${c.velocidade.map(v=>`<tr><td><strong>${E(v.via||'—')}</strong></td><td>${E(v.pct||'—')}% da velocidade da via</td><td>${E(v.seg||'—')} s</td><td>${E(v.sev||'—')}</td></tr>`).join('')}</tbody></table>`);
+  /* relatórios personalizados (só quando o cliente terá) */
+  const rls=(c.relatorios&&c.relatorios.tem==='sim'?c.relatorios.lista:[]).filter(r=>r.nome);
+  const cl3='display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:24px;font-weight:400;opacity:.8;margin-top:6px';
+  for(let i=0;i<rls.length;i+=3){const ch=rls.slice(i,i+3);
+    add(`${nx()}${hd('Relatórios',`<strong>O que você</strong> vai receber${rls.length>3?` (${Math.floor(i/3)+1}/${Math.ceil(rls.length/3)})`:''}`)}
+     <table class="cobli-table tev"><thead><tr><th style="width:40%">Relatório</th><th style="width:28%">Quando</th><th style="width:15%">Canal</th><th>Formato</th></tr></thead><tbody>
+     ${ch.map(r=>`<tr><td><strong>${E(r.nome)}</strong>${r.conteudo?`<div style="${cl3}">${E(r.conteudo)}</div>`:''}</td><td>${E(relFreq(r))}${r.periodo?`<div style="${cl3}">${E(relPeriodo(r))}</div>`:''}</td><td>${E(relCanal(r))}</td><td>${E(r.formato||'—')}</td></tr>`).join('')}</tbody></table>`)}
+  /* frota monitorada */
+  const pl=placasLista(c.frota.placas),tipoF=c.frota.tipo?FR[c.frota.tipo].charAt(0).toUpperCase()+FR[c.frota.tipo].slice(1):'—';
+  const pill='font-size:26px;font-weight:500;padding:10px 22px;border:2px solid currentColor;border-radius:999px;opacity:.9';
+  add(`${nx()}${hd('Frota monitorada','<strong>Quais veículos</strong> entram no piloto')}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:40px;margin-top:20px">
+     <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}" data-k="${veic.length>5?'long':''}">${veic}</div><div class="kpi-label">${c.frota.todos?'a frota da conta':'veículos'}</div><div class="kpi-desc">${c.frota.todos?'Todos os veículos da conta entram no piloto.':'Placas informadas para o piloto.'}</div></div>
+     <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}" data-k="${tipoF.length>5?'long':''}">${E(tipoF)}</div><div class="kpi-label">tipo de frota</div><div class="kpi-desc">Perfil usado para configurar o monitoramento.</div></div></div>
+    ${!c.frota.todos&&pl.length?`<div style="display:flex;flex-wrap:wrap;gap:14px">${pl.slice(0,42).map(x=>`<span style="${pill}">${E(x)}</span>`).join('')}${pl.length>42?`<span style="${pill}">+${pl.length-42}</span>`:''}</div>`:''}`);
   /* 6 cronograma */
   const st=[['Instalação',c.instalacao],['Início do piloto',c.inicio],['Reunião de dados do painel',c.reuniaoPainel],['Fim previsto',c.fim]];
   add(`${nx()}${hd('Cronograma','<strong>Como o piloto</strong> vai acontecer')}
