@@ -10,7 +10,7 @@ function propostaHtml(c){
   const lock=()=>`<div class="lock"><span class="lg"><img src="${LG}" alt="Cobli" style="height:140px;margin:-38px 0;display:block"></span><i></i>${chip(72)}</div>`;
   let tone='light';const slides=[];
   const nx=()=>{tone=(tone==='dark'?'light':'dark');return ''};
-  const add=inner=>{const t=tone;slides.push(`<section class="slide slide--${t}"><div class="cobli-circle cobli-circle--br" style="width:520px;height:520px;right:-330px;bottom:-330px"></div>${cobrand(t)}<div class="slide-content" style="gap:36px">${inner}</div></section>`)};
+  const add=(inner,circ)=>{const t=tone;slides.push(`<section class="slide slide--${t}">${circ?'<div class="cobli-circle cobli-circle--br" style="width:520px;height:520px;right:-330px;bottom:-330px"></div>':''}${cobrand(t)}<div class="slide-content" style="gap:36px">${inner}</div></section>`)};
   const hd=(badge,title)=>`<div style="display:flex;flex-direction:column;gap:20px"><div class="tema-badge${tone==='dark'?'':' tb-l'}">${badge}</div><h2 class="s-title" style="max-width:1350px">${title}</h2></div>`;
   const q=qtdCliente(c),r=calcPreco(q,c.desconto,1);
   const mon=eventosMon(c);
@@ -18,7 +18,7 @@ function propostaHtml(c){
   const placas=placasLista(c.frota.placas).length;
   const veic=c.frota.todos?'Toda':(placas?String(placas):'—');
   /* 1 capa */
-  slides.push(`<section class="slide slide--dark"><div class="linhas-arco linhas-arco--enterprise linhas-arco--br" style="width:900px;height:900px"></div><div class="slide-content" style="justify-content:center;gap:40px">${lock()}
+  slides.push(`<section class="slide slide--dark"><div class="slide-content" style="justify-content:center;gap:40px">${lock()}
     <div class="tema-badge" style="margin-top:40px">Proposta de piloto</div>
     <h1 style="font-size:112px;font-weight:700;line-height:1.04;letter-spacing:-0.03em;max-width:1500px">Piloto de monitoramento <span style="color:var(--cobli-green)">${E(emp)}</span></h1>
     <p class="s-subtitle" style="max-width:1200px">Veja como a Cobli vai acompanhar a sua frota, evento a evento. ${E(emp)}.</p></div></section>`);
@@ -28,7 +28,7 @@ function propostaHtml(c){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:20px">
      <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}" data-k="${veic.length>5?'long':''}">${veic}</div><div class="kpi-label">${c.frota.todos?'a frota':'veículos'}</div><div class="kpi-desc">${c.frota.tipo?'Frota '+FR[c.frota.tipo]+' no piloto.':'Veículos que entram no piloto.'}</div></div>
      <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}">${mon.length}</div><div class="kpi-label">eventos monitorados</div><div class="kpi-desc">Cada um com severidade, gatilho e ação definidos.</div></div>
-     <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}">${c.grupos.length}</div><div class="kpi-label">grupos de aviso</div><div class="kpi-desc">As pessoas certas avisadas no WhatsApp.</div></div></div>`);
+     <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}">${c.grupos.length}</div><div class="kpi-label">grupos de aviso</div><div class="kpi-desc">As pessoas certas avisadas no WhatsApp.</div></div></div>`,1);
   /* 3 equipamentos */
   const eqs=EQUIPS.filter(e=>+c.equip[e].qtd>0);
   if(eqs.length||+c.posicoes>0){
@@ -41,7 +41,7 @@ function propostaHtml(c){
   /* 4 grupos (antes dos eventos) */
   for(let i=0;i<c.grupos.length;i+=3){const ch=c.grupos.slice(i,i+3);
     add(`${nx()}${hd('Grupos de aviso',`<strong>Quem recebe</strong> os avisos${c.grupos.length>3?` (${Math.floor(i/3)+1}/${Math.ceil(c.grupos.length/3)})`:''}`)}
-     <div style="display:grid;grid-template-columns:repeat(${ch.length},1fr);gap:36px;margin-top:20px">${ch.map(g=>`<div class="card ${tone==='dark'?'card--dark':'card--light'}" style="padding:36px 34px"><div class="kpi-label" style="margin:0">${E(g.nome)}</div><div class="kpi-desc" style="margin:10px 0 18px">${E(g.objetivo)}</div>${g.pessoas.map(p=>`<div style="font-size:26px;line-height:1.5"><strong>${E(p.nome)}</strong><br><span style="opacity:.8">${E(p.telefone)}</span></div>`).join('')}</div>`).join('')}</div>`)}
+     <div style="display:grid;grid-template-columns:repeat(${ch.length},1fr);gap:36px;margin-top:20px">${ch.map(g=>`<div class="card ${tone==='dark'?'card--dark':'card--light'}" style="padding:36px 34px"><div class="kpi-label" style="margin:0">${E(g.nome)}</div><div class="kpi-desc" style="margin:10px 0 18px">${E(g.objetivo)}</div>${g.pessoas.map(p=>`<div style="font-size:26px;line-height:1.5"><strong>${E(p.nome)}</strong><br><span style="opacity:.8">${E(p.telefone)}</span></div>`).join('')}</div>`).join('')}</div>`,1)}
   /* acessos à plataforma ONE */
   const one=(c.one||[]).filter(u=>u.nome||u.email);
   for(let i=0;i<one.length;i+=6){const ch=one.slice(i,i+6);
@@ -71,11 +71,11 @@ function propostaHtml(c){
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:40px;margin-top:20px">
      <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}" data-k="${veic.length>5?'long':''}">${veic}</div><div class="kpi-label">${c.frota.todos?'a frota da conta':'veículos'}</div><div class="kpi-desc">${c.frota.todos?'Todos os veículos da conta entram no piloto.':'Placas informadas para o piloto.'}</div></div>
      <div class="card ${tone==='dark'?'card--dark':'card--light'}"><div class="kpi-number${tone==='dark'?'':' kpi-number--royal'}" data-k="${tipoF.length>5?'long':''}">${E(tipoF)}</div><div class="kpi-label">tipo de frota</div><div class="kpi-desc">Perfil usado para configurar o monitoramento.</div></div></div>
-    ${!c.frota.todos&&pl.length?`<div style="display:flex;flex-wrap:wrap;gap:14px">${pl.slice(0,42).map(x=>`<span style="${pill}">${E(x)}</span>`).join('')}${pl.length>42?`<span style="${pill}">+${pl.length-42}</span>`:''}</div>`:''}`);
+    ${!c.frota.todos&&pl.length?`<div style="display:flex;flex-wrap:wrap;gap:14px">${pl.slice(0,42).map(x=>`<span style="${pill}">${E(x)}</span>`).join('')}${pl.length>42?`<span style="${pill}">+${pl.length-42}</span>`:''}</div>`:''}`,1);
   /* 6 cronograma */
   const st=[['Instalação',c.instalacao],['Início do piloto',c.inicio],['Reunião de dados do painel',c.reuniaoPainel],['Fim previsto',c.fim]];
   add(`${nx()}${hd('Cronograma','<strong>Como o piloto</strong> vai acontecer')}
-    <div class="timeline" style="--steps:4;margin-top:50px">${st.map((s,i)=>`<div class="timeline-step"><div class="timeline-dot">0${i+1}</div><div class="timeline-title">${s[0]}</div><p class="timeline-desc">${s[1]?fdate(s[1]):'A definir'}</p></div>`).join('')}</div>`);
+    <div class="timeline" style="--steps:4;margin-top:50px">${st.map((s,i)=>`<div class="timeline-step"><div class="timeline-dot">0${i+1}</div><div class="timeline-title">${s[0]}</div><p class="timeline-desc">${s[1]?fdate(s[1]):'A definir'}</p></div>`).join('')}</div>`,1);
   /* 7 investimento */
   if(q.video||q.tele||q.pos){
     const ls=r.linhas.filter(l=>l.q>0);
