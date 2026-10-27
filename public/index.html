@@ -204,7 +204,7 @@ td.gat select{min-width:118px}
   <button data-view="painel" class="on">Acompanhamento</button>
   <button data-view="pilotos">Pilotos (início e fim)</button>
   <button data-view="precos">Tabela de preços</button>
-  <button data-view="notif">Notificações Slack</button>
+  <button data-view="notif" id="navNotif" hidden>Notificações Slack</button>
   <button data-view="acessos" id="navAcessos" hidden>Acessos</button>
 </nav>
 <main id="main"><div class="empty">Carregando dados…</div></main>
@@ -697,6 +697,7 @@ function vPilotos(){
   </tbody></table></div>`;
 }
 function vNotif(){
+  if(S.papel!=='admin')return '<div class="card"><p class="muted">Somente administradores.</p></div>';
   const n=notif;
   const chip=(ok,t)=>`<span class="badge b-${ok?'ok':'bad'}">${ok?'✓':'✗'} ${t}</span>`;
   return `<div class="card"><h3>Conexão com o Slack</h3>
@@ -1041,7 +1042,7 @@ window.addEventListener('beforeunload',e=>{if(Object.values(salvando).some(Boole
     document.body.classList.add(S.papel);
     const w=$('#who');w.hidden=false;
     w.innerHTML=(S.avatar?`<img src="${esc(S.avatar)}" alt="" referrerpolicy="no-referrer">`:`<div class="ini">${esc((S.nome||'?')[0].toUpperCase())}</div>`)+`<div class="nm"><b>${esc(S.nome)}</b><span>${esc(S.papel)}</span></div>`;
-    if(S.papel==='admin')$('#navAcessos').hidden=false;
+    if(S.papel==='admin'){$('#navAcessos').hidden=false;$('#navNotif').hidden=false}
     S.clientes=b.clientes.map(c=>{normaliza(c);versoes[c.id]=c._versao;return c});
     setState('Conectado');render();
   }catch(e){setState('Erro ao carregar',true);$('#main').innerHTML=`<div class="card"><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}

@@ -26,12 +26,12 @@ module.exports = async (req, res) => {
       case 'getHistorico': exige(...LEITURA); result = await db.historico(k, args[0]); break;
       case 'saveCliente': exige(...EDICAO); result = await db.salvar(k, args[0], args[1], u.email, args[2]); break;
       case 'deleteCliente': exige(...ADMIN); result = await db.excluir(k, args[0], u.email); break;
-      case 'getNotificacoes': exige(...LEITURA); result = nt.estado(); break;
+      case 'getNotificacoes': exige('admin'); result = nt.estado(); break;
       case 'salvarSlack': throw new Error('Nesta versão, o Slack é configurado nas variáveis de ambiente do Vercel (SLACK_BOT_TOKEN, SLACK_CANAL, MODO_TESTE_EMAIL).');
-      case 'ativarGatilho': exige(...EDICAO); result = nt.estado(); break; // o envio diário é um cron do Vercel (vercel.json)
-      case 'previaNotificacoes': exige(...LEITURA); result = await nt.previa(k); break;
-      case 'enviarAgora': exige(...EDICAO); result = await nt.enviar(k, true); break;
-      case 'enviarTeste': exige(...EDICAO); result = await nt.teste(u.email); break;
+      case 'ativarGatilho': exige('admin'); result = nt.estado(); break; // o envio diário é um cron do Vercel (vercel.json)
+      case 'previaNotificacoes': exige('admin'); result = await nt.previa(k); break;
+      case 'enviarAgora': exige('admin'); result = await nt.enviar(k, true); break;
+      case 'enviarTeste': exige('admin'); result = await nt.teste(u.email); break;
       /* gestão de acessos — só admin */
       case 'listarAcessos': exige(...ADMIN); result = await db.usuarios(k); break;
       case 'salvarAcesso': {
