@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<script src="auth.js"></script>
 <title>Torre de Controle — Cobli × GR Parcerias</title>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -17,6 +19,12 @@ header img{height:68px;margin:-14px -6px -14px -10px}
 header h1{font-size:18px;margin:0;font-weight:600}
 header .sub{font-size:12px;opacity:.75}
 .spacer{flex:1}
+.who{display:flex;align-items:center;gap:8px;font-size:12px}.who img{width:28px;height:28px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.2)}
+.who .ini{width:28px;height:28px;border-radius:50%;background:var(--cgreen);color:var(--indigo);display:grid;place-items:center;font-weight:700}
+.who .nm{line-height:1.15}.who .nm b{display:block;font-weight:600}.who .nm span{opacity:.75;text-transform:capitalize}
+body.leitor [data-act="newClient"],body.leitor [data-act="delClient"],body.editor [data-act="delClient"]{display:none!important}
+body.leitor main input,body.leitor main select,body.leitor main textarea{pointer-events:none;opacity:.85}
+.ac td,.ac th{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}.ac table{width:100%;border-collapse:collapse}
 #saveState{font-size:12px;opacity:.9;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.14)}
 #saveState.err{background:var(--red)}
 nav{background:#fff;border-bottom:1px solid var(--line);padding:0 24px;display:flex;gap:4px;overflow-x:auto}
@@ -187,14 +195,17 @@ td.gat select{min-width:118px}
   <div><h1>Torre de Controle — Pilotos e Clientes</h1><div class="sub">Cobli × GR Parcerias · ficha de assessment por piloto</div></div>
   <div class="spacer"></div>
   <span id="saveState">carregando…</span>
+  <div class="who" id="who" hidden></div>
   <button class="btn ghost" data-act="csv">⬇ CSV</button>
   <button class="btn green" data-act="newClient">+ Novo piloto</button>
+  <button class="btn ghost" data-act="sair" style="color:#fff;border-color:rgba(255,255,255,.35)">Sair</button>
 </header>
 <nav id="nav">
   <button data-view="painel" class="on">Acompanhamento</button>
   <button data-view="pilotos">Pilotos (início e fim)</button>
   <button data-view="precos">Tabela de preços</button>
   <button data-view="notif">Notificações Slack</button>
+  <button data-view="acessos" id="navAcessos" hidden>Acessos</button>
 </nav>
 <main id="main"><div class="empty">Carregando dados…</div></main>
 <datalist id="emails"></datalist>
@@ -438,17 +449,21 @@ const slack2html=t=>esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/&lt;(h
 
 /* ============ API (Vercel /api/rpc + Supabase; STUB local só com ?stub=1) ============ */
 const USE_STUB=new URLSearchParams(location.search).has('stub');
-const KEY=(()=>{try{const u=new URL(location.href),k=u.searchParams.get('k');if(k){localStorage.setItem('tdc_k',k);u.searchParams.delete('k');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash)}return localStorage.getItem('tdc_k')||''}catch(e){return ''}})();
-const WHO=(()=>{try{let n=localStorage.getItem('tdc_user');if(!n&&KEY&&!USE_STUB){n=(prompt('Seu nome ou e-mail (aparece no histórico de alterações):')||'').trim();if(n)localStorage.setItem('tdc_user',n)}return n||''}catch(e){return ''}})();
+let TOK='';
+const toLogin=m=>{TDCAuth.toLogin(m)};
 const rpc=async(fn,...a)=>{if(USE_STUB)return STUB[fn](...a);
-  if(!KEY)throw new Error('Abra a plataforma pelo link de acesso (com ?k=…).');
-  const r=await fetch('/api/rpc',{method:'POST',headers:{'content-type':'application/json','x-access-key':KEY,'x-user':encodeURIComponent(WHO)},body:JSON.stringify({fn,args:a})});
-  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('Erro '+r.status));return j.result};
+  TOK=await TDCAuth.token();if(!TOK){toLogin();throw new Error('Sessão expirada.')}
+  const r=await fetch('/api/rpc',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+TOK},body:JSON.stringify({fn,args:a})});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401){toLogin();throw new Error(j.error||'Sessão expirada.')}
+  if(r.status===403&&j.motivo){await TDCAuth.signOut();toLogin(j.motivo);throw new Error(j.error||'Sem acesso.')}
+  if(!r.ok)throw new Error(j.error||('Erro '+r.status));return j.result};
+if(!USE_STUB)setInterval(()=>{TDCAuth.token().then(t=>{if(t)TOK=t}).catch(()=>{})},240000);
 const STUB=(()=>{let db={clientes:[],hist:{},slack:{token:false,canal:'',gatilho:false,ultimo:null}};
  try{const r=localStorage.getItem('stub3');if(r)db=JSON.parse(r)}catch(e){}
  const sv=()=>{try{localStorage.setItem('stub3',JSON.stringify(db))}catch(e){}};
  return{
-  async getBootstrap(){return clone({eu:'modo-teste@local',clientes:db.clientes})},
+  async getBootstrap(){return clone({eu:'modo-teste@local',nome:'Modo teste',papel:'admin',avatar:'',clientes:db.clientes})},
   async saveCliente(c,vb,logs){const i=db.clientes.findIndex(x=>x.id===c.id);
     if(i>=0&&vb&&db.clientes[i]._versao!==vb)return{conflito:true,cliente:clone(db.clientes[i]),por:'outro usuário'};
     const v='v'+Date.now();const k=clone(c);k._versao=v;if(i>=0)db.clientes[i]=k;else db.clientes.push(k);
@@ -605,7 +620,7 @@ function render(){
   $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===view||(view==='ficha'&&b.dataset.view==='painel')));
   const em=new Set();S.clientes.forEach(c=>{[c.responsavel,...c.one.map(u=>u.email)].forEach(x=>x&&emailOk(x)&&em.add(x))});
   $('#emails').innerHTML=[...em].map(x=>`<option value="${esc(x)}">`).join('');
-  $('#main').innerHTML=({painel:vPainel,pilotos:vPilotos,precos:vPrecos,notif:vNotif,ficha:vFicha})[view]();
+  $('#main').innerHTML=({painel:vPainel,pilotos:vPilotos,precos:vPrecos,notif:vNotif,acessos:vAcessos,ficha:vFicha})[view]();
   if(view==='ficha'&&histAberto)loadHist(get(fichaId));
 }
 function renderKeep(){const y=window.scrollY;render();window.scrollTo(0,y)}
@@ -942,6 +957,19 @@ document.addEventListener('change',e=>{
 document.addEventListener('input',e=>{const t=e.target;if(calEl&&t===calAnc){const v=parseBR(t.value);if(v){calY=+v.slice(0,4);calM=+v.slice(5,7)-1;calDraw()}}
   if(t.dataset&&t.dataset.mask&&MASK[t.dataset.mask]){const v=MASK[t.dataset.mask](t.value);if(v!==t.value)t.value=v}
   if(e.target.id==='busca'){busca=e.target.value;const pos=e.target.selectionStart;render();const b=$('#busca');b.focus();b.setSelectionRange(pos,pos)}});
+let acessos=null;
+async function carregaAcessos(){try{acessos=await rpc('listarAcessos');if(view==='acessos')render()}catch(e){setState('Erro: '+e.message,true)}}
+function vAcessos(){
+  if(S.papel!=='admin')return '<div class="card"><p class="muted">Somente administradores.</p></div>';
+  const L=acessos;
+  const sel=(v,id)=>`<select class="in" data-acpapel="${id}" style="width:auto"><option value="admin"${v==='admin'?' selected':''}>Admin</option><option value="editor"${v==='editor'?' selected':''}>Editor</option><option value="leitor"${v==='leitor'?' selected':''}>Leitor</option></select>`;
+  const rows=!L?'<tr><td colspan="5" class="muted">Carregando…</td></tr>':L.map(u=>`<tr><td>${esc(u.nome||'—')}<div class="muted" style="font-size:12px">${esc(u.email)}${u.externo?' · externo':''}</div></td><td>${sel(u.papel,esc(u.email))}</td><td>${u.ativo?'Ativo':'<span class="muted">Desativado</span>'}</td><td class="muted">${u.ultimo_login?new Date(u.ultimo_login).toLocaleString('pt-BR'):'nunca'}</td><td style="text-align:right">${u.email===S.eu?'<span class="muted">você</span>':`<button class="btn ghost sm" data-act="acToggle" data-em="${esc(u.email)}">${u.ativo?'Desativar':'Ativar'}</button> <button class="btn danger sm" data-act="acDel" data-em="${esc(u.email)}">Remover</button>`}</td></tr>`).join('');
+  return `<div class="card ac"><h3>Acessos</h3><p class="muted">Quem tem e-mail @cobli.co entra sozinho com o Google, como <b>editor</b>. Aqui você muda papéis e libera e-mails externos (entram por link enviado ao e-mail). Só o admin exclui clientes e gerencia acessos.</p>
+  <table><thead><tr><th>Pessoa</th><th>Papel</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+  <h4 style="margin:18px 0 8px">Liberar e-mail externo</h4>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="in" id="acEmail" type="email" placeholder="email@empresa.com" style="max-width:300px"><input class="in" id="acNome" placeholder="Nome (opcional)" style="max-width:220px"><select class="in" id="acPapel" style="width:auto"><option value="leitor">Leitor</option><option value="editor">Editor</option></select><button class="btn" data-act="acAdd">Liberar acesso</button></div></div>`}
+async function acSalvar(email,papel,ativo,nome){try{await rpc('salvarAcesso',email,nome||'',papel,ativo);await carregaAcessos();toast('Acesso atualizado')}catch(e){setState('Erro: '+e.message,true);toast(e.message)}}
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.acpapel){const u=(acessos||[]).find(x=>x.email===t.dataset.acpapel);if(u)acSalvar(u.email,t.value,u.ativo,u.nome)}});
 async function carregaNotif(){try{notif=await rpc('getNotificacoes');if(view==='notif')render()}catch(e){setState('Erro: '+e.message,true)}}
 document.addEventListener('click',async e=>{
   const t=e.target.closest('[data-open],[data-view],[data-filtro],[data-act],[data-addrow],[data-delrow],[data-goto]');
@@ -949,7 +977,7 @@ document.addEventListener('click',async e=>{
   if(view==='precos'&&simDirty()&&(d.open||(d.view&&d.view!=='precos')||d.act==='newClient')){if(!await guardaSim())return}
   if(d.open){openFicha(d.open,d.goto);return}
   if(d.goto!==undefined&&!d.open){scrollBloco(+d.goto);return}
-  if(d.view){view=d.view;if(view==='precos')simLoad(precoCli);render();if(view==='notif'&&!notif)carregaNotif();return}
+  if(d.view){view=d.view;if(view==='precos')simLoad(precoCli);render();if(view==='notif'&&!notif)carregaNotif();if(view==='acessos')carregaAcessos();return}
   if(d.filtro){filtro=d.filtro;render();return}
   if(d.addrow&&c){const path=d.addrow,arr=resolve(c,path),last=path.split('.').pop();
     if(last==='one')arr.push({nome:'',email:''});
@@ -969,6 +997,10 @@ document.addEventListener('click',async e=>{
   if(a==='simSalvarVoltar'){simSalvar(true);return}
   if(a==='simVoltar'){if(simDirty()&&!confirm('Descartar as alterações e voltar para o cliente?'))return;openFicha(precoCli);return}
   if(a==='saveBack'){await saveAndBack(c)}
+  if(a==='sair'){await TDCAuth.signOut();toLogin();return}
+  if(a==='acAdd'){const em=($('#acEmail').value||'').trim().toLowerCase();if(!emailOk(em)){toast('E-mail inválido');return}acSalvar(em,$('#acPapel').value,true,($('#acNome').value||'').trim());return}
+  if(a==='acToggle'){const u=(acessos||[]).find(x=>x.email===d.em);if(u)acSalvar(u.email,u.papel,!u.ativo,u.nome);return}
+  if(a==='acDel'){if(!confirm('Remover o acesso de '+d.em+'?'))return;try{await rpc('removerAcesso',d.em);await carregaAcessos()}catch(err){toast(err.message)}return}
   if(a==='newClient'){const nome=prompt('Nome do cliente / piloto:');if(!nome||!nome.trim())return;
     const n=novoCliente(nome.trim());S.clientes.unshift(n);touch(n,'Piloto cadastrado');openFicha(n.id)}
   if(a==='seed'){for(const nome of['Via Cristais','Núcleo Engenharia']){const n=novoCliente(nome,{status:'Ativo'});S.clientes.push(n);touch(n,'Cliente cadastrado (já em operação)')}render()}
@@ -1005,9 +1037,13 @@ window.addEventListener('beforeunload',e=>{if(Object.values(salvando).some(Boole
 (async()=>{
   try{
     const b=await rpc('getBootstrap');
-    S.eu=b.eu;
+    S.eu=b.eu;S.nome=b.nome||b.eu;S.papel=b.papel||'leitor';S.avatar=b.avatar||'';
+    document.body.classList.add(S.papel);
+    const w=$('#who');w.hidden=false;
+    w.innerHTML=(S.avatar?`<img src="${esc(S.avatar)}" alt="" referrerpolicy="no-referrer">`:`<div class="ini">${esc((S.nome||'?')[0].toUpperCase())}</div>`)+`<div class="nm"><b>${esc(S.nome)}</b><span>${esc(S.papel)}</span></div>`;
+    if(S.papel==='admin')$('#navAcessos').hidden=false;
     S.clientes=b.clientes.map(c=>{normaliza(c);versoes[c.id]=c._versao;return c});
-    setState('Conectado como '+S.eu);render();
+    setState('Conectado');render();
   }catch(e){setState('Erro ao carregar',true);$('#main').innerHTML=`<div class="card"><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 })();
 </script>

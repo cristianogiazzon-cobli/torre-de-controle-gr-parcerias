@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Torre de Controle · Cobli</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/elements.css">
+<!-- Geist: Google Fonts como reforço; arquivos locais têm prioridade -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  /* === COBLI · GEIST PADRONIZADA — não remover === */
+  @font-face { font-family: "Geist"; font-weight: 400; font-style: normal; font-display: block; src: url("fonts/geist-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Geist"; font-weight: 500; font-style: normal; font-display: block; src: url("fonts/geist-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Geist"; font-weight: 600; font-style: normal; font-display: block; src: url("fonts/geist-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Geist"; font-weight: 700; font-style: normal; font-display: block; src: url("fonts/geist-latin-700-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Geist Mono"; font-weight: 400; font-style: normal; font-display: block; src: url("fonts/geist-mono-latin-400-normal.woff2") format("woff2"); }
+  :root {
+    --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Geist Mono", "Geist", ui-monospace, monospace;
+    /* 1px de design = 1px a 1920 de largura; encolhe até 62% em telas menores */
+    --s: min(1px, max(0.62px, calc(100vw / 1920)));
+  }
+  html, body, body *, button, input { font-family: var(--font-sans) !important; }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 58fr 42fr;
+    background: var(--cobli-paper);
+    color: var(--cobli-ink);
+    font-weight: var(--w-regular);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ── Painel da marca (z-index: decorador 1 · conteúdo 3) ── */
+  .hero {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: flex; flex-direction: column;
+    padding: calc(88 * var(--s)) calc(110 * var(--s)) calc(96 * var(--s));
+    background: radial-gradient(ellipse at 30% 40%, #0E0E8A 0%, var(--cobli-indigo) 55%, #040428 100%);
+    color: #fff;
+  }
+  .hero .linhas-arco { width: calc(900 * var(--s)); height: calc(900 * var(--s)); top: calc(-110 * var(--s)); right: calc(-110 * var(--s)); }
+  .brand, .hero-main { position: relative; z-index: 3; }
+  .brand img { display: block; height: calc(58 * var(--s)); width: auto; align-self: flex-start; }
+  .hero-main { margin-block: auto; padding-top: calc(48 * var(--s)); }
+  h1 {
+    margin: 0 0 calc(36 * var(--s));
+    font-size: calc(112 * var(--s)); line-height: 1.02; font-weight: var(--w-bold); letter-spacing: -0.02em;
+    color: #fff;
+  }
+  h1 .hl { color: var(--cobli-green); }
+  .lead { margin: 0; text-wrap: balance; max-width: calc(820 * var(--s)); font-size: calc(32 * var(--s)); line-height: 1.35; color: var(--cobli-text-dim); }
+
+  /* ── Painel de acesso ── */
+  .panel { display: grid; place-items: center; padding: calc(64 * var(--s)); }
+  .card {
+    width: min(100%, calc(640 * var(--s)));
+    background: #fff; border-radius: var(--r-card);
+    box-shadow: var(--sh-card-light);
+    padding: calc(56 * var(--s));
+  }
+  .card h2 { margin: 0 0 calc(12 * var(--s)); font-size: calc(44 * var(--s)); line-height: 1.1; font-weight: var(--w-bold); color: var(--cobli-indigo); }
+  .card .sub { margin: 0; font-size: calc(26 * var(--s)); line-height: 1.4; color: var(--cobli-ink-soft); }
+
+  .btn-google, .btn-primary {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: calc(18 * var(--s));
+    height: calc(88 * var(--s)); border-radius: calc(14 * var(--s));
+    font-size: calc(26 * var(--s)); font-weight: var(--w-semibold); cursor: pointer;
+    transition: background .15s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  .btn-google { margin-top: calc(40 * var(--s)); background: #fff; color: var(--cobli-indigo); border: 1.5px solid rgba(7, 7, 78, 0.22); }
+  .btn-google:hover:not([disabled]) { background: var(--cobli-paper); box-shadow: 0 2px 10px rgba(7, 7, 78, 0.10); }
+  .btn-google svg { width: calc(34 * var(--s)); height: calc(34 * var(--s)); flex: none; }
+  .btn-primary { margin-top: calc(20 * var(--s)); background: var(--cobli-royal); color: #fff; border: 0; }
+  .btn-primary:hover:not([disabled]) { background: #00138A; }
+  button[disabled] { opacity: .65; cursor: progress; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--cobli-royal); outline-offset: 3px; }
+
+  .spin { width: calc(30 * var(--s)); height: calc(30 * var(--s)); border: 3px solid rgba(7, 7, 78, .18); border-top-color: var(--cobli-indigo); border-radius: 50%; animation: spin .8s linear infinite; display: none; }
+  .busy .spin { display: block; }
+  .busy .g { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .ext { margin-top: calc(32 * var(--s)); text-align: center; }
+  .link { background: none; border: 0; padding: 4px 6px; color: var(--cobli-royal); font-size: calc(24 * var(--s)); font-weight: var(--w-medium); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+  #extForm { display: none; margin-top: calc(24 * var(--s)); text-align: left; padding-top: calc(28 * var(--s)); border-top: 1px solid var(--cobli-line); }
+  #extForm.on { display: block; }
+  #extForm label { display: block; margin-bottom: calc(10 * var(--s)); font-size: calc(24 * var(--s)); font-weight: var(--w-medium); color: var(--cobli-ink-soft); }
+  #extForm input { width: 100%; height: calc(80 * var(--s)); padding: 0 calc(22 * var(--s)); border: 1.5px solid rgba(7, 7, 78, 0.22); border-radius: calc(14 * var(--s)); font-size: calc(26 * var(--s)); color: var(--cobli-indigo); background: #fff; }
+
+  .msg { display: none; margin-top: calc(28 * var(--s)); padding: calc(18 * var(--s)) calc(22 * var(--s)); border-radius: calc(12 * var(--s)); font-size: calc(24 * var(--s)); line-height: 1.4; }
+  .msg.err { display: block; background: #FDECEC; color: #8A1C20; }
+  .msg.ok { display: block; background: var(--cobli-green-soft); color: var(--cobli-indigo); }
+  .msg.info { display: block; background: var(--cobli-paper-2); color: var(--cobli-ink-soft); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-main, .brand, .card { animation: fade .7s ease both; }
+    .card { animation-delay: .12s; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  }
+
+  /* ── Celular: coluna única ── */
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; }
+    .hero { padding: 28px 24px 40px; }
+    .hero .linhas-arco { width: 380px; height: 380px; top: -50px; right: -50px; }
+    .brand img { height: 38px; }
+    .hero-main { padding-top: 40px; margin-block: 0; }
+    h1 { font-size: 44px; margin-bottom: 16px; }
+    .lead { font-size: 18px; }
+    .panel { padding: 20px 16px 40px; align-items: start; }
+    .card { padding: 28px 22px; border-radius: 16px; width: 100%; }
+    .card h2 { font-size: 28px; }
+    .card .sub { font-size: 17px; }
+    .btn-google, .btn-primary { height: 58px; font-size: 18px; border-radius: 12px; gap: 12px; }
+    .btn-google { margin-top: 28px; }
+    .btn-google svg { width: 24px; height: 24px; }
+    .spin { width: 22px; height: 22px; }
+    .link { font-size: 17px; }
+    .ext { margin-top: 24px; }
+    #extForm { margin-top: 18px; padding-top: 20px; }
+    #extForm label { font-size: 16px; }
+    #extForm input { height: 54px; font-size: 18px; border-radius: 12px; padding: 0 16px; }
+    .msg { font-size: 16px; margin-top: 20px; padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+  <section class="hero" aria-label="Torre de Controle">
+    <div class="linhas-arco linhas-arco--enterprise linhas-arco--tr" aria-hidden="true"></div>
+    <div class="brand"><img src="kit/assets/logo-slogan-white.svg" alt="Cobli"></div>
+    <div class="hero-main">
+      <h1>Torre de <span class="hl">Controle</span></h1>
+      <p class="lead">Acompanhe como está o seu cliente na Torre de Controle</p>
+    </div>
+  </section>
+
+  <main class="panel">
+    <div class="card" id="card">
+      <h2>Entrar</h2>
+      <p class="sub">Use sua conta Google da Cobli.</p>
+
+      <button type="button" class="btn-google" id="btnGoogle">
+        <svg class="g" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        <span class="spin" aria-hidden="true"></span>
+        <span id="btnGoogleTxt">Entrar com Google</span>
+      </button>
+
+      <div class="ext">
+        <button type="button" class="link" id="btnExt" aria-expanded="false" aria-controls="extForm">Sou externo: entrar com e-mail</button>
+      </div>
+      <form id="extForm" novalidate>
+        <label for="email">Seu e-mail</label>
+        <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="nome@empresa.com" required>
+        <button type="submit" class="btn-primary" id="btnSend">Receber link de acesso</button>
+      </form>
+
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+    </div>
+  </main>
+
+<script src="auth.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var ADM = 'cristiano.giazzon@cobli.co';
+  var MSG = {
+    nao_autorizado: 'Este acesso é restrito a contas @cobli.co ou liberadas pelo administrador. Fale com ' + ADM + '.',
+    desativado: 'Seu acesso está desativado. Fale com ' + ADM + '.',
+    cobli_google: 'Contas @cobli.co entram pelo botão "Entrar com Google".',
+    sem_email: 'Não foi possível identificar o e-mail da sua conta. Tente outra conta Google.'
+  };
+  function show(kind, txt) { var m = $('#msg'); m.className = 'msg ' + kind; m.textContent = txt; }
+  function hide() { var m = $('#msg'); m.className = 'msg'; m.textContent = ''; }
+  function busy(on, label) {
+    var b = $('#btnGoogle');
+    b.disabled = !!on; b.classList.toggle('busy', !!on);
+    $('#btnGoogleTxt').textContent = on ? (label || 'Entrando…') : 'Entrar com Google';
+  }
+
+  $('#btnGoogle').addEventListener('click', async function () {
+    hide(); busy(true, 'Abrindo o Google…');
+    try { await TDCAuth.loginGoogle(); }
+    catch (e) { busy(false); show('err', 'Não foi possível iniciar o login. Tente novamente.'); }
+  });
+
+  $('#btnExt').addEventListener('click', function () {
+    var f = $('#extForm'), on = !f.classList.contains('on');
+    f.classList.toggle('on', on); this.setAttribute('aria-expanded', String(on));
+    if (on) $('#email').focus();
+  });
+
+  $('#extForm').addEventListener('submit', async function (ev) {
+    ev.preventDefault(); hide();
+    var em = $('#email').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { show('err', 'Digite um e-mail válido.'); return; }
+    var b = $('#btnSend'); b.disabled = true; b.textContent = 'Enviando…';
+    try {
+      var r = await fetch('/api/otp', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: em }) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok) show('err', j.error || 'Não foi possível enviar agora. Tente de novo em instantes.');
+      else show('ok', 'Se esse e-mail estiver liberado, enviamos um link de acesso. Abra o link neste mesmo navegador.');
+    } catch (e) { show('err', 'Sem conexão. Tente de novo em instantes.'); }
+    b.disabled = false; b.textContent = 'Receber link de acesso';
+  });
+
+  (async function boot() {
+    var p = new URLSearchParams(location.search);
+    var erroHash = TDCAuth.takeHash();
+    if (erroHash) show('err', erroHash);
+    if (p.get('erro')) show('err', MSG[p.get('erro')] || MSG.nao_autorizado);
+    if (!TDCAuth.hasSession()) return;
+    busy(true, 'Entrando…');
+    try { await TDCAuth.me(); location.replace('/'); }
+    catch (e) {
+      busy(false);
+      if (e.status === 403) { await TDCAuth.signOut(); show('err', MSG[e.motivo] || e.message || MSG.nao_autorizado); }
+      else if (e.status === 401) { await TDCAuth.signOut(); }
+      else show('err', 'Não foi possível validar seu acesso agora. Tente novamente.');
+    }
+  })();
+})();
+</script>
+</body>
+</html>

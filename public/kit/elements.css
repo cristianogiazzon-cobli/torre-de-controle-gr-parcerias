@@ -1,0 +1,760 @@
+/* ─────────────────────────────────────────────────────────────
+   Cobli — Brand elements
+   quarter-circles, listras, badges, logo, cards
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Slide frame defaults ───────────────────────────────────── */
+/*
+   Z-INDEX STACKING ORDER (strict — nunca ultrapassar):
+   z-index 1 : decoradores de fundo (qcircle, stripes, curves-deco)
+   z-index 2 : painel de imagem (split__image)
+   z-index 3 : slide-content (wrapper principal)
+   z-index 4 : texto, cards, ícones dentro do conteúdo
+   z-index 5 : slide-footnote
+   z-index 6 : logo-corner
+*/
+.slide {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  padding: var(--pad-y-top) var(--pad-x) var(--pad-y-bot);
+  display: flex;
+  flex-direction: column;
+  isolation: isolate; /* cria novo stacking context — previne vazamento de z-index */
+}
+
+.slide--dark {
+  background: radial-gradient(ellipse at 30% 40%, #0E0E8A 0%, var(--cobli-indigo) 55%, #040428 100%);
+  color: #fff;
+}
+.slide--indigo-flat {
+  background: var(--cobli-indigo);
+  color: #fff;
+}
+.slide--royal {
+  background: radial-gradient(ellipse at 30% 40%, #1E3FD9 0%, var(--cobli-royal) 60%, #000A5C 100%);
+  color: #fff;
+}
+.slide--light {
+  background: var(--cobli-paper);
+  color: var(--cobli-ink);
+}
+
+/* ── Logo canto superior direito ────────────────────────────── */
+.logo-corner {
+  position: absolute;
+  top: 48px;
+  right: 56px;
+  width: 56px;
+  height: 62px;
+  z-index: 6; /* topo absoluto — nunca coberto */
+  pointer-events: none;
+}
+.logo-corner img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+/* ── Decorativos reais (PNG extraídos do PPTX original) ────── */
+/* Base rule: posiciona a imagem via background-image */
+.deco {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+/* ── Círculo decorativo (Asset Secundário oficial da Cobli) ───── */
+.cobli-circle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+/* Variantes de cor */
+.cobli-circle--verde  { background-image: url('assets/circle-verde-gradient.svg'); }
+.cobli-circle--royal  { background-image: url('assets/circle-royal.svg'); }
+.cobli-circle--indigo { background-image: url('assets/circle-indigo.svg'); }
+
+/* Posições — TL maior, BR menor, como na referência */
+.cobli-circle--br {
+  width: 700px;
+  height: 700px;
+  right: -440px;
+  bottom: -440px;
+}
+.cobli-circle--tl {
+  width: 900px;
+  height: 900px;
+  left: -560px;
+  top: -540px;
+}
+.cobli-circle--tr {
+  width: 700px;
+  height: 700px;
+  right: -440px;
+  top: -440px;
+}
+.cobli-circle--bl {
+  width: 700px;
+  height: 700px;
+  left: -440px;
+  bottom: -440px;
+}
+
+/* Por tema:
+   dark slides: TL = royal blue (igual ao slide de ref), BR = verde gradient
+   light slides: TL = royal, BR = royal */
+.slide--dark .cobli-circle--br,
+.slide--indigo-flat .cobli-circle--br,
+.slide--royal .cobli-circle--br {
+  background-image: url('assets/circle-verde-gradient.svg');
+}
+.slide--dark .cobli-circle--tl,
+.slide--indigo-flat .cobli-circle--tl,
+.slide--royal .cobli-circle--tl {
+  background-image: url('assets/circle-royal.svg');
+}
+.slide--light .cobli-circle {
+  background-image: url('assets/circle-royal.svg');
+}
+
+/* ── Linhas Arco (Asset Primário Cobli) ──────────────────────── */
+/* Arcos concêntricos quarter-circle — Enterprise (#001BB8) e Geral (#07074E) */
+.linhas-arco {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 600px;
+  height: 600px;
+}
+.linhas-arco--enterprise { background-image: url('assets/linhas-arco-enterprise.svg'); }
+.linhas-arco--geral      { background-image: url('assets/linhas-arco-geral.svg'); }
+
+/* Posições */
+.linhas-arco--tr { top: -200px; right: -200px; transform: scaleX(-1); }
+.linhas-arco--br { bottom: -200px; right: -200px; transform: rotate(90deg); }
+.linhas-arco--tl { top: -200px; left: -200px; }
+.linhas-arco--bl { bottom: -200px; left: -200px; transform: scaleY(-1); }
+.qcircle--br {
+  right: -220px;
+  bottom: -220px;
+  width: 680px;
+  height: 750px;
+  transform: rotate(180deg);
+}
+.qcircle--br-sm {
+  right: -100px;
+  bottom: -100px;
+  width: 420px;
+  height: 460px;
+  transform: rotate(180deg);
+}
+.qcircle--tl {
+  left: -200px;
+  top: -200px;
+  width: 680px;
+  height: 750px;
+}
+.qcircle--tr {
+  right: -200px;
+  top: -200px;
+  width: 680px;
+  height: 750px;
+  transform: scaleX(-1);
+}
+.qcircle--bl {
+  left: -200px;
+  bottom: -200px;
+  width: 680px;
+  height: 750px;
+  transform: scaleY(-1);
+}
+.qcircle--light {
+  opacity: 0.5;
+}
+
+/* Listras horizontais grossas (image5: 552×96, rodapé) */
+.stripes {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: left center;
+}
+.stripes--h {
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  height: 86px;
+  background-image: url('assets/stripes-horizontal.png');
+  background-size: auto 86px;
+}
+.slide--dark .stripes--h,
+.slide--indigo-flat .stripes--h,
+.slide--royal .stripes--h {
+  background-image: url('assets/stripes-horizontal-light.png');
+}
+
+/* Listras verticais */
+.stripes--v {
+  top: 0;
+  bottom: 0;
+  right: 60px;
+  width: 320px;
+  background-image: url('assets/stripes-vertical-white.png'); /* light: fundo branco */
+  background-size: contain;
+  background-position: right center;
+}
+.slide--dark .stripes--v,
+.slide--indigo-flat .stripes--v,
+.slide--royal .stripes--v {
+  background-image: url('assets/stripes-vertical-light.png'); /* dark: versão clareada */
+}
+
+/* Listras horizontais finas (image2: 2048×140, wrap-around/corner) */
+.stripes--thin {
+  top: 0;
+  right: 0;
+  width: 680px;
+  height: 50px;
+  background-image: url('assets/stripes-horizontal-thin.png');
+  background-size: contain;
+  background-position: right top;
+}
+.slide--dark .stripes--thin,
+.slide--indigo-flat .stripes--thin,
+.slide--royal .stripes--thin {
+  /* image2 is thin — reuse as-is, it's already dark+green on transparent,
+     but tint via filter for dark slides */
+  filter: brightness(1.8) saturate(1.1);
+}
+
+/* Curvas em L (image3: 2048×140 — 7 curvas paralelas c/ canto arredondado) */
+.curves-deco {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-image: url('assets/curves-L.png');
+}
+.slide--dark .curves-deco,
+.slide--indigo-flat .curves-deco,
+.slide--royal .curves-deco {
+  background-image: url('assets/curves-L-light.png');
+}
+.curves-deco--br {
+  right: -40px;
+  bottom: -40px;
+  width: 640px;
+  height: 640px;
+}
+.curves-deco--bl {
+  left: -40px;
+  bottom: -40px;
+  width: 640px;
+  height: 640px;
+  transform: scaleX(-1);
+}
+.curves-deco--tr {
+  right: -40px;
+  top: -40px;
+  width: 640px;
+  height: 640px;
+  transform: scaleY(-1);
+}
+
+/* Legacy .curves wrapper (kept for backwards compat, SVG version) */
+.curves {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.curves svg { width: 100%; height: 100%; display: block; }
+
+/* ── Badge "Tema principal" ──────────────────────────────────── */
+.tema-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: var(--r-pill);
+  background: var(--cobli-green);
+  color: var(--cobli-indigo);
+  font-weight: var(--w-bold);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  align-self: flex-start;
+  width: fit-content;
+}
+.tema-badge--outline {
+  background: transparent;
+  border: 2px solid var(--cobli-green);
+  color: var(--cobli-green);
+}
+
+/* ── Títulos & hierarquia ────────────────────────────────────── */
+.s-title {
+  font-size: var(--t-title);
+  font-weight: var(--w-bold);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  color: inherit;
+  max-width: 1500px;
+}
+.s-title .hl-green { color: var(--cobli-green); }
+.s-title .hl-royal { color: var(--cobli-royal); }
+.s-title .hl-light { font-weight: var(--w-regular); }
+
+.s-subtitle {
+  font-size: var(--t-subtitle);
+  font-weight: var(--w-regular);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: inherit;
+  opacity: 0.92;
+  max-width: 1500px;
+}
+
+.s-body {
+  font-size: var(--t-body);
+  font-weight: var(--w-regular);
+  line-height: 1.4;
+  color: inherit;
+}
+
+.s-eyebrow {
+  font-size: var(--t-small);
+  font-weight: var(--w-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cobli-green);
+}
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.card {
+  border-radius: var(--r-card);
+  padding: 48px 40px;
+  position: relative;
+  z-index: 2;
+}
+.card--dark {
+  background: linear-gradient(180deg, rgba(0, 27, 184, 0.22) 0%, rgba(7, 7, 78, 0.45) 100%);
+  border: 1.5px solid var(--cobli-card-border);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+.card--light {
+  background: #fff;
+  box-shadow: var(--sh-card-light);
+  color: var(--cobli-ink);
+}
+
+/* Header de coluna (usado no layout "3 colunas com header") */
+.col-header {
+  border-radius: var(--r-card) var(--r-card) 6px 6px;
+  padding: 22px 28px;
+  font-weight: var(--w-bold);
+  font-size: var(--t-body);
+  color: #fff;
+  background: linear-gradient(180deg, var(--cobli-royal) 0%, #1E3FD9 100%);
+  border: 1.5px solid var(--cobli-green);
+  text-align: center;
+}
+
+/* Números grandes estilo hero (KPIs) */
+.kpi-number {
+  font-size: 128px;
+  font-weight: var(--w-bold);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--cobli-green);
+}
+.kpi-number--royal { color: var(--cobli-royal); }
+
+.kpi-label {
+  font-size: var(--t-body);
+  font-weight: var(--w-bold);
+  margin-top: 28px;
+  color: inherit;
+}
+.kpi-desc {
+  font-size: var(--t-small);
+  line-height: 1.4;
+  margin-top: 16px;
+  color: inherit;
+  opacity: 0.82;
+}
+
+/* Numero pequeno em quadrado (01, 02, ...) */
+.num-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  background: var(--cobli-green);
+  color: var(--cobli-indigo);
+  font-weight: var(--w-bold);
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  position: relative;
+  z-index: 4;
+}
+
+/* Ícone circular */
+.icon-chip {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 4;
+}
+.icon-chip--green {
+  background: var(--cobli-green);
+  color: var(--cobli-indigo);
+}
+.icon-chip--indigo {
+  background: var(--cobli-indigo);
+  color: var(--cobli-green);
+}
+.icon-chip svg {
+  width: 34px;
+  height: 34px;
+  stroke-width: 2;
+}
+
+/* Bullets */
+.bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.bullets li {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: var(--t-body);
+  line-height: 1.4;
+}
+.bullets li::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cobli-green);
+  margin-top: 14px;
+  flex-shrink: 0;
+}
+
+/* Split slide (2 colunas full-bleed) — variante genérica */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  inset: 0;
+  padding: 0;
+}
+.split > * { padding: var(--pad-y-top) var(--pad-x) var(--pad-y-bot); }
+
+/* Split com imagem inserível
+   .split--image-right: texto left | imagem right
+   .split--image-left : imagem left | texto right */
+.split--image-right,
+.split--image-left {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  inset: 0;
+  padding: 0;
+}
+.split--image-left { grid-template-columns: 1fr 1fr; }
+
+.split__text {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  padding: var(--pad-y-top) var(--pad-x) var(--pad-y-bot);
+}
+.split__image {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  background: var(--cobli-indigo);
+}
+.split__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.split__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.35);
+  font-size: 28px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(255,255,255,0.03) 0 16px,
+      rgba(255,255,255,0.01) 16px 32px),
+    linear-gradient(180deg, rgba(0,27,184,0.35), rgba(7,7,78,0.7));
+}
+.split__image--placeholder::before { content: "+ imagem do setor"; }
+.split__image .curves-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background-image: url('assets/curves-L-light.png');
+  background-size: 80%;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+
+/* KPI fluid — auto-shrink para números longos
+   Usar data-kpi="long" quando o número tiver > 8 chars (ex: R$ 1.234.567) */
+.kpi-number {
+  font-size: 128px;
+  font-weight: var(--w-bold);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--cobli-green);
+  white-space: nowrap; /* nunca quebrar R$ 000 K em 2 linhas */
+}
+.kpi-number[data-kpi="long"]  { font-size: 96px; }
+.kpi-number[data-kpi="xlong"] { font-size: 72px; }
+.kpi-number--royal { color: var(--cobli-royal); }
+
+/* Table */
+.cobli-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--t-body);
+}
+.cobli-table th,
+.cobli-table td {
+  padding: 22px 28px;
+  text-align: left;
+  vertical-align: middle;
+}
+.cobli-table thead th {
+  font-weight: var(--w-bold);
+  font-size: var(--t-body);
+  color: var(--cobli-indigo);
+  background: var(--cobli-green);
+  border-bottom: 2px solid var(--cobli-indigo);
+}
+.cobli-table thead th:first-child { border-top-left-radius: 14px; }
+.cobli-table thead th:last-child  { border-top-right-radius: 14px; }
+.cobli-table tbody tr:nth-child(odd)  td { background: #fff; }
+.cobli-table tbody tr:nth-child(even) td { background: rgba(0, 27, 184, 0.04); }
+.cobli-table tbody td {
+  border-bottom: 1px solid var(--cobli-line);
+}
+.cobli-table tbody tr:last-child td { border-bottom: none; }
+.cobli-table .check  { color: var(--cobli-royal); font-weight: var(--w-bold); }
+.cobli-table .cross  { color: #B8B8C8; }
+
+/* Dark variant of table */
+.slide--dark .cobli-table tbody tr:nth-child(odd) td,
+.slide--dark .cobli-table tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+}
+.slide--dark .cobli-table tbody td { border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+/* Foto da equipe — placeholder (striped) */
+.team-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(255,255,255,0.06) 0 8px,
+      rgba(255,255,255,0.02) 8px 16px),
+    linear-gradient(180deg, rgba(0,27,184,0.35), rgba(7,7,78,0.6));
+  border: 1.5px solid var(--cobli-card-border);
+  overflow: hidden;
+  position: relative;
+}
+.slide--light .team-photo {
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(7,7,78,0.06) 0 8px,
+      rgba(7,7,78,0.02) 8px 16px),
+    #fff;
+  border: 1.5px solid var(--cobli-line);
+}
+.team-photo .ph-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 24px;
+  color: rgba(255,255,255,0.65);
+}
+.slide--light .team-photo .ph-label { color: rgba(7,7,78,0.5); }
+
+/* Quote */
+.quote-mark {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 260px;
+  line-height: 0.9;
+  color: var(--cobli-green);
+  font-weight: var(--w-bold);
+  letter-spacing: -0.05em;
+}
+.quote-text {
+  font-size: 60px;
+  font-weight: var(--w-semibold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  max-width: 1300px;
+}
+.quote-attr {
+  margin-top: 44px;
+  font-size: var(--t-body);
+  color: var(--cobli-green);
+  font-weight: var(--w-semibold);
+}
+.slide--light .quote-attr { color: var(--cobli-royal); }
+
+/* Timeline horizontal */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(var(--steps, 4), 1fr);
+  align-items: flex-start;
+  gap: 0;
+  position: relative;
+  margin-top: 40px;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: 40px;
+  left: calc(100% / (var(--steps, 4) * 2));
+  right: calc(100% / (var(--steps, 4) * 2));
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--cobli-royal) 0%,
+    var(--cobli-green) 100%);
+  z-index: 0;
+}
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 20px;
+  position: relative;
+  z-index: 1;
+}
+.timeline-dot {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--cobli-indigo);
+  border: 3px solid var(--cobli-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--w-bold);
+  font-size: 30px;
+  color: var(--cobli-green);
+  margin-bottom: 32px;
+}
+.slide--light .timeline-dot {
+  background: #fff;
+  border-color: var(--cobli-royal);
+  color: var(--cobli-royal);
+  box-shadow: var(--sh-card-light);
+}
+.timeline-title {
+  font-size: var(--t-body);
+  font-weight: var(--w-bold);
+  margin-bottom: 12px;
+}
+.timeline-desc {
+  font-size: var(--t-small);
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+/* Footnote / source */
+.slide-footnote {
+  position: absolute;
+  bottom: 40px;
+  left: var(--pad-x);
+  right: var(--pad-x);
+  font-size: 24px;
+  opacity: 0.6;
+  z-index: 5; /* acima do conteúdo mas abaixo do logo */
+}
+
+/* Utilidade: layer principal acima dos decoradores */
+.slide-content {
+  position: relative;
+  z-index: 3; /* acima dos decoradores (z:1) e imagens (z:2) */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Inline highlighter (underline sutil) */
+.hl-box {
+  display: inline-block;
+  padding: 2px 12px;
+  border-radius: 8px;
+  background: var(--cobli-green);
+  color: var(--cobli-indigo);
+  font-weight: var(--w-bold);
+}
+
+/* Badge col-header (variante: ocupa largura total da coluna) */
+.tema-badge--full {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+}
+.inline-pill {
+  display: inline-block;
+  padding: 12px 28px;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--cobli-green);
+  color: var(--cobli-green);
+  background: transparent;
+  font-size: var(--t-body);
+  font-weight: var(--w-regular);
+}

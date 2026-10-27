@@ -1,0 +1,90 @@
+/* ─────────────────────────────────────────────────────────────
+   Cobli — Design tokens
+   Marca oficial: Geist / Índigo / Royal / Green Tech
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Cores oficiais */
+  --cobli-indigo: #07074E;    /* Índigo Enterprise */
+  --cobli-royal:  #001BB8;    /* Royal Cobli */
+  --cobli-green:  #0FFDC9;    /* Green Tech */
+
+  /* Tons auxiliares (derivados para uso interno — nao fazem parte da marca) */
+  --cobli-indigo-deep: #050538;
+  --cobli-royal-soft:  rgba(0, 27, 184, 0.22);
+  --cobli-green-soft:  rgba(15, 253, 201, 0.15);
+
+  /* Neutros light mode */
+  --cobli-paper:     #F5F7FA;
+  --cobli-paper-2:   #ECEFF5;
+  --cobli-ink:       #07074E;
+  --cobli-ink-soft:  #4A4F73;
+  --cobli-line:      rgba(7, 7, 78, 0.10);
+
+  /* Neutros dark mode */
+  --cobli-night:        #07074E;
+  --cobli-night-2:      #0C0C6B;
+  --cobli-card-dark:    rgba(255, 255, 255, 0.04);
+  --cobli-card-border:  rgba(15, 253, 201, 0.35);
+  --cobli-text-dim:     rgba(255, 255, 255, 0.70);
+
+  /* Tipografia */
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Escala de tipo @ 1920x1080 */
+  --t-hero:       160px;  /* numeros gigantes (KPIs hero) */
+  --t-display:    96px;   /* capa principal */
+  --t-title:      64px;   /* titulo padrao de slide */
+  --t-subtitle:   44px;   /* subtitulo / secundario */
+  --t-body:       32px;   /* corpo padrao */
+  --t-body-lg:    36px;
+  --t-small:      26px;   /* legenda, caption */
+  --t-micro:      24px;   /* badge, metadado */
+
+  /* Pesos */
+  --w-regular:    400;
+  --w-medium:     500;
+  --w-semibold:   600;
+  --w-bold:       700;
+
+  /* Spacing */
+  --pad-x:        110px;   /* padding horizontal do slide */
+  --pad-y-top:    88px;    /* topo */
+  --pad-y-bot:    96px;    /* base */
+  --gap-title:    52px;
+  --gap-item:     28px;
+  --gap-block:    72px;
+
+  /* Radius */
+  --r-card:       20px;
+  --r-pill:       999px;
+  --r-badge:      12px;
+
+  /* Sombras */
+  --sh-card-light: 0 2px 4px rgba(7, 7, 78, 0.04),
+                   0 12px 28px rgba(7, 7, 78, 0.08);
+  --sh-card-dark:  0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Reset mínimo dentro dos slides */
+deck-stage section {
+  font-family: var(--font-sans);
+  font-weight: var(--w-regular);
+  color: var(--cobli-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+}
+deck-stage section *,
+deck-stage section *::before,
+deck-stage section *::after {
+  box-sizing: border-box;
+}
+deck-stage h1, deck-stage h2, deck-stage h3,
+deck-stage h4, deck-stage p, deck-stage ul, deck-stage ol,
+deck-stage figure, deck-stage blockquote {
+  margin: 0;
+  padding: 0;
+}
+deck-stage ul, deck-stage ol { list-style: none; }

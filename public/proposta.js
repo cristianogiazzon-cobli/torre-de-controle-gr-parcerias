@@ -92,7 +92,7 @@ function propostaHtml(c){
 <script>
 var NOME=${JSON.stringify(nome).replace(/</g,'\\u003c')};
 async function baixar(b){var t=b.textContent;b.disabled=true;b.textContent='Gerando PDF…';
- try{var r=await fetch((window.__origin||'')+'/api/pdf',{method:'POST',headers:{'content-type':'application/json','x-access-key':window.__key||''},body:JSON.stringify({html:window.__html})});
+ try{var r=await fetch((window.__origin||'')+'/api/pdf',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+(window.__tok||'')},body:JSON.stringify({html:window.__html})});
   if(!r.ok){var j={};try{j=await r.json()}catch(e){}throw new Error(j.error||('HTTP '+r.status))}
   var bl=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=NOME+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},5000)}
  catch(e){alert('Não foi possível gerar o PDF ('+e.message+'). Use o botão Imprimir e escolha Paisagem.')}
@@ -102,4 +102,4 @@ document.querySelectorAll('.kpi-number').forEach(function(n){var l=n.textContent
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){});<\/script></body></html>`}
 function abrirProposta(c){
   const w=window.open('','_blank');if(!w){toast('O navegador bloqueou a janela — libere pop-ups para este site');return}
-  const h=propostaHtml(c);w.document.open();w.document.write(h);w.document.close();w.__html=h;w.__key=KEY;w.__origin=location.origin}
+  const h=propostaHtml(c);w.document.open();w.document.write(h);w.document.close();w.__html=h;w.__tok=TOK;w.__origin=location.origin}

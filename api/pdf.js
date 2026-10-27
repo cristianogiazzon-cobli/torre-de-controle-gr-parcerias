@@ -1,17 +1,13 @@
 /* POST /api/pdf  { html } -> application/pdf (1920x1080 px por página, paisagem, vetorial).
  * Gera o PDF da proposta no servidor, para ficar idêntico em qualquer navegador (Safari não respeita o tamanho da página no diálogo de impressão).
- * Acesso: cabeçalho x-access-key = ACCESS_KEY, como em /api/rpc. */
-const crypto = require('crypto');
-
-const igual = (a, b) => {
-  const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || ''));
-  return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
-};
+ * Acesso: qualquer pessoa logada e ativa (cabeçalho Authorization: Bearer <token>), como em /api/rpc. */
+const { autenticar } = require('../lib/auth');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
-  if (!igual(req.headers['x-access-key'], process.env.ACCESS_KEY)) return res.status(401).json({ error: 'Link de acesso inválido.' });
+  try { await autenticar(req); }
+  catch (e) { return res.status(e.status || 500).json({ error: e.message, motivo: e.motivo }); }
   const html = req.body && req.body.html;
   if (typeof html !== 'string' || html.length < 100 || html.length > 4000000) return res.status(400).json({ error: 'HTML da proposta ausente ou grande demais.' });
   let browser;
