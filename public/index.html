@@ -20,6 +20,7 @@ header h1{font-size:18px;margin:0;font-weight:600}
 header .sub{font-size:12px;opacity:.75}
 .spacer{flex:1}
 .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--indigo-50);color:var(--indigo);margin-left:6px;font-weight:500}.tag.warn{background:var(--amber-50);color:#8a6100}
+.tw table.evt{min-width:0;width:100%;table-layout:fixed}table.evt .ac{display:flex;gap:6px;align-items:flex-start;margin:3px 0}table.evt .ac small{padding-top:10px}table.evt .ac small{width:20px;color:var(--muted);flex:none}table.evt .ac>div{flex:1;min-width:0}table.evt .ac select{margin:0!important}table.evt th{white-space:normal}table.evt td,table.evt th{padding:9px 8px}table.evt td select,table.evt td input:not([type=checkbox]){min-width:0;text-overflow:ellipsis}table.evt td.gat{min-width:0}table.evt tr.grp td{white-space:normal}
 td.gat{min-width:170px}td.gat label{white-space:nowrap;display:inline-flex;gap:4px;align-items:center;margin-right:6px}
 tr.grp td{background:var(--indigo-50);padding:8px 10px;font-weight:600;color:var(--indigo)}tr.grp .btn{margin-left:8px;font-weight:500}
 .rg{display:flex;align-items:center;gap:4px;margin-bottom:4px;flex-wrap:wrap}.rg input{width:70px}
@@ -805,7 +806,7 @@ function vFicha(c0){
 
   ${blocoHead(c,5,'Informativo para configurar a Torre — esta matriz não dispara nada. Marcar um evento para monitorar significa que a Torre vai notificá-lo; defina a severidade, o gatilho ou critério e a ordem de escalonamento das ações (1ª, 2ª e 3ª). Os eventos padrão já vêm listados: remova o que não faz sentido, adicione da lista de eventos ou peça um evento novo ao admin.')}
     <div class="row-actions noprint edit-only" style="margin:0 0 10px"><button class="btn ghost sm" data-act="evTodos">Marcar todos para monitorar</button><button class="btn ghost sm" data-act="evSugestao">Preencher com a sugestão (eventos padrão)</button><button class="btn ghost sm" data-act="evLimpar">Limpar tudo</button></div>
-    <div class="tw"><table style="min-width:900px"><thead><tr><th>Monitorar</th><th>Evento</th><th>Severidade</th><th>Gatilho / critério</th><th>1ª ação</th><th>2ª ação</th><th>3ª ação</th><th></th></tr></thead><tbody>${evTbody(c,gn)}</tbody></table></div>
+    <div class="tw"><table class="evt"><colgroup><col style="width:84px"><col style="width:170px"><col style="width:145px"><col style="width:230px"><col style="width:290px"><col style="width:48px"></colgroup><thead><tr><th>Monitorar</th><th>Evento</th><th>Severidade</th><th>Gatilho / critério</th><th>Ações (1ª → 2ª → 3ª)</th><th></th></tr></thead><tbody>${evTbody(c,gn)}</tbody></table></div>
     <div class="row-actions noprint edit-only"><button class="btn ghost sm" data-addrow="eventos">+ Evento personalizado</button>${evAddSelect(c)}<button class="btn ghost sm" data-act="pedirToggle">Pedir novo evento ao admin</button></div>
     ${pedirAberto?pedidoForm():''}</div>
 
@@ -886,12 +887,12 @@ function pedidoForm(){return `<div class="card noprint" style="margin-top:10px;b
   <div class="row-actions"><button class="btn" data-act="pedirEnviar">Enviar pedido</button><button class="btn ghost" data-act="pedirToggle">Cancelar</button></div></div>`}
 function evRow(c,e,i,gn){
   const p=`eventos.${i}`;ajustaEv(e);
-  const acao=(a,k)=>`<td><select data-f="${p}.acoes.${k}.t">${ACOES.map(([v,l])=>`<option value="${v}" ${a.t===v?'selected':''}>${l}</option>`).join('')}</select>${a.t==='grupo'?`<select data-f="${p}.acoes.${k}.g" style="margin-top:4px"><option value="">escolha o grupo…</option>${gn.map(g=>`<option value="${esc(g)}" ${a.g===g?'selected':''}>${esc(g)}</option>`).join('')}${a.g&&!gn.includes(a.g)?`<option value="${esc(a.g)}" selected>${esc(a.g)} (grupo removido)</option>`:''}</select>`:''}</td>`;
+  const acao=(a,k)=>`<div class="ac"><small>${k+1}ª</small><div><select data-f="${p}.acoes.${k}.t">${ACOES.map(([v,l])=>`<option value="${v}" ${a.t===v?'selected':''}>${l}</option>`).join('')}</select>${a.t==='grupo'?`<select data-f="${p}.acoes.${k}.g" style="margin-top:4px"><option value="">escolha o grupo…</option>${gn.map(g=>`<option value="${esc(g)}" ${a.g===g?'selected':''}>${esc(g)}</option>`).join('')}${a.g&&!gn.includes(a.g)?`<option value="${esc(a.g)}" selected>${esc(a.g)} (grupo removido)</option>`:''}</select>`:''}</div></div>`;
   return `<tr class="${e.monitorar?'':'off'}"><td class="c"><input type="checkbox" data-chk="${p}.monitorar" ${e.monitorar?'checked':''}></td>
    <td>${e.custom?`<input data-f="${p}.evento" value="${esc(e.evento)}" placeholder="nome do evento"><span class="tag">personalizado</span>`:`<b>${esc(evNome(e))}</b>${e.cat&&(!catById(e.cat)||catById(e.cat).arquivado)?'<span class="tag warn">fora do catálogo</span>':''}`}</td>
    <td><select class="sev sv${SEVS.indexOf(e.sev)}" data-f="${p}.sev"><option value="">—</option>${SEVS.map(x=>`<option ${e.sev===x?'selected':''}>${x}</option>`).join('')}</select></td>
    ${tipoLista(e)?`<td class="gat"><select data-gat="${i}"><option value="">—</option>${GATILHOS.map(x=>`<option value="${esc(x)}" ${!e.gOutro&&e.gatilho===x?'selected':''}>${x}</option>`).join('')}<option value="__outro" ${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?'selected':''}>Outro (digitar)…</option></select>${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?`<input style="margin-top:4px" data-f="${p}.gatilho" value="${esc(e.gatilho)}" placeholder="ex.: 7 s">`:''}</td>`:critCell(c,e,i)}
-   ${e.acoes.map(acao).join('')}
+   <td class="acs">${e.acoes.map(acao).join('')}</td>
    <td><button class="btn ghost sm" data-delrow="${p}" title="Excluir este evento da ficha do cliente">✕</button></td></tr>`;
 }
 async function loadHist(c){try{const h=await rpc('getHistorico',c.id);const b=$('#histBox');if(b)b.innerHTML=h.map(x=>`<div>${esc(x.txt)}<small>${esc(x.ts)} · ${esc(x.user)}</small></div>`).join('')||'<div class="muted">Sem registros.</div>'}catch(e){const b=$('#histBox');if(b)b.textContent='Erro: '+e.message}}
