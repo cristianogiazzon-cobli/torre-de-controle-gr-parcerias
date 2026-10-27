@@ -42,15 +42,11 @@ function propostaHtml(c){
     add(`${nx()}${hd('Grupos de aviso',`<strong>Quem recebe</strong> os avisos${c.grupos.length>3?` (${Math.floor(i/3)+1}/${Math.ceil(c.grupos.length/3)})`:''}`)}
      <div style="display:grid;grid-template-columns:repeat(${ch.length},1fr);gap:36px;margin-top:20px">${ch.map(g=>`<div class="card ${tone==='dark'?'card--dark':'card--light'}" style="padding:36px 34px"><div class="kpi-label" style="margin:0">${E(g.nome)}</div><div class="kpi-desc" style="margin:10px 0 18px">${E(g.objetivo)}</div>${g.pessoas.map(p=>`<div style="font-size:26px;line-height:1.5"><strong>${E(p.nome)}</strong><br><span style="opacity:.8">${E(p.telefone)}</span></div>`).join('')}</div>`).join('')}</div>`)}
   /* 5 eventos */
-  const gat=e=>e.gatilho||'—';
+  const gat=e=>critTxt(e);
   for(let i=0;i<mon.length;i+=6){const ch=mon.slice(i,i+6);
     add(`${nx()}${hd('Eventos monitorados',`<strong>O que a Torre</strong> vigia${mon.length>6?` (${Math.floor(i/6)+1}/${Math.ceil(mon.length/6)})`:''}`)}
-     <table class="cobli-table tev"><thead><tr><th style="width:27%">Evento</th><th style="width:15%">Severidade</th><th style="width:20%">Gatilho</th><th>Ação</th></tr></thead><tbody>
-     ${ch.map(e=>`<tr><td><strong>${E(e.evento)}</strong></td><td>${E(e.sev||'—')}</td><td>${E(gat(e))}</td><td>${E(acoesTxt(e))}</td></tr>`).join('')}</tbody></table>`)}
-  if(evVel(c)&&evVel(c).monitorar&&c.velocidade.length)
-    add(`${nx()}${hd('Excesso de velocidade','<strong>Regras</strong> de velocidade')}
-     <table class="cobli-table tev"><thead><tr><th>Via / limite</th><th>Acima de</th><th>Por</th><th>Severidade</th></tr></thead><tbody>
-     ${c.velocidade.map(v=>`<tr><td><strong>${E(v.via||'—')}</strong></td><td>${E(v.pct||'—')}% da velocidade da via</td><td>${E(v.seg||'—')} s</td><td>${E(v.sev||'—')}</td></tr>`).join('')}</tbody></table>`);
+     <table class="cobli-table tev"><thead><tr><th style="width:27%">Evento</th><th style="width:15%">Severidade</th><th style="width:20%">Gatilho / critério</th><th>Ação</th></tr></thead><tbody>
+     ${ch.map(e=>`<tr><td><strong>${E(evNome(e))}</strong></td><td>${E(e.sev||'—')}</td><td>${E(gat(e))}</td><td>${E(acoesTxt(e))}</td></tr>`).join('')}</tbody></table>`)}
   /* relatórios personalizados (só quando o cliente terá) */
   const rls=(c.relatorios&&c.relatorios.tem==='sim'?c.relatorios.lista:[]).filter(r=>r.nome);
   const cl3='display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:24px;font-weight:400;opacity:.8;margin-top:6px';

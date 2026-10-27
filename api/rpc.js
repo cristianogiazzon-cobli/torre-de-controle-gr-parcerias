@@ -22,7 +22,33 @@ module.exports = async (req, res) => {
     let result;
     switch (fn) {
       case 'getMe': exige(...LEITURA); result = { email: u.email, nome: u.nome, papel: u.papel, avatar: u.avatar }; break;
-      case 'getBootstrap': exige(...LEITURA); result = { eu: u.email, nome: u.nome, papel: u.papel, avatar: u.avatar, clientes: await db.bootstrap(k) }; break;
+      case 'getBootstrap': {
+        exige(...LEITURA);
+        const [clientes, catalogo] = await Promise.all([db.bootstrap(k), db.catalogo(k)]);
+        let pendentes = 0;
+        if (u.papel === 'admin') { const sl = await db.solicitacoes(k); pendentes = sl.filter(x => x.status === 'pendente').length; }
+        result = { eu: u.email, nome: u.nome, papel: u.papel, avatar: u.avatar, clientes, catalogo, pendentes };
+        break;
+      }
+      /* catálogo de eventos (leitura: todos; edição: só admin) */
+      case 'getCatalogo': exige(...LEITURA); result = await db.catalogo(k); break;
+      case 'salvarCatalogo': {
+        exige(...ADMIN);
+        const it = args[0] || {};
+        result = await db.salvarCatalogo(k, it, u.email); break;
+      }
+      case 'removerCatalogo': exige(...ADMIN); result = await db.removerCatalogo(k, String(args[0] || ''), u.email); break;
+      case 'pedirEvento': {
+        exige(...EDICAO);
+        const [cid, cnome, nome, grupo, obs] = args;
+        result = await db.solicitar(k, u.email, cid, cnome, nome, grupo, obs); break;
+      }
+      case 'listarSolicitacoes': exige(...ADMIN); result = await db.solicitacoes(k); break;
+      case 'resolverSolicitacao': {
+        exige(...ADMIN);
+        const [id, status, motivo, catId, addFicha] = args;
+        result = await db.resolverSolicitacao(k, Number(id), status, motivo, u.email, catId, addFicha); break;
+      }
       case 'getHistorico': exige(...LEITURA); result = await db.historico(k, args[0]); break;
       case 'saveCliente': exige(...EDICAO); result = await db.salvar(k, args[0], args[1], u.email, args[2]); break;
       case 'deleteCliente': exige(...ADMIN); result = await db.excluir(k, args[0], u.email); break;

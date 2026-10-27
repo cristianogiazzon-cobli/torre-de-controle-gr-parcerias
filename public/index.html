@@ -19,6 +19,14 @@ header img{height:68px;margin:-14px -6px -14px -10px}
 header h1{font-size:18px;margin:0;font-weight:600}
 header .sub{font-size:12px;opacity:.75}
 .spacer{flex:1}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--indigo-50);color:var(--indigo);margin-left:6px;font-weight:500}.tag.warn{background:var(--amber-50);color:#8a6100}
+td.gat{min-width:170px}td.gat label{white-space:nowrap;display:inline-flex;gap:4px;align-items:center;margin-right:6px}
+tr.grp td{background:var(--indigo-50);padding:8px 10px;font-weight:600;color:var(--indigo)}tr.grp .btn{margin-left:8px;font-weight:500}
+.rg{display:flex;align-items:center;gap:4px;margin-bottom:4px;flex-wrap:wrap}.rg input{width:70px}
+.subtabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}.subtabs button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer}.subtabs button.on{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;line-height:18px;text-align:center;margin-left:6px}
+body.leitor .edit-only{display:none!important}
+.cat td{padding:6px 8px;vertical-align:middle}.cat table{border-collapse:collapse}.cat tr.off td{opacity:.6}
 .who{display:flex;align-items:center;gap:8px;font-size:12px}.who img{width:28px;height:28px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.2)}
 .who .ini{width:28px;height:28px;border-radius:50%;background:var(--cgreen);color:var(--indigo);display:grid;place-items:center;font-weight:700}
 .who .nm{line-height:1.15}.who .nm b{display:block;font-weight:600}.who .nm span{opacity:.75;text-transform:capitalize}
@@ -204,8 +212,7 @@ td.gat select{min-width:118px}
   <button data-view="painel" class="on">Acompanhamento</button>
   <button data-view="pilotos">Pilotos (início e fim)</button>
   <button data-view="precos">Tabela de preços</button>
-  <button data-view="notif" id="navNotif" hidden>Notificações Slack</button>
-  <button data-view="acessos" id="navAcessos" hidden>Acessos</button>
+  <button data-view="admin" id="navAdmin" hidden>Admin<span class="badge" id="badgeSol" hidden></span></button>
 </nav>
 <main id="main"><div class="empty">Carregando dados…</div></main>
 <datalist id="emails"></datalist>
@@ -229,7 +236,13 @@ var EVENTOS_BASE = ['Distração', 'Fadiga', 'Uso de celular', 'Excesso de veloc
   'Motor ocioso', 'Permanência em ponto', 'Sem identificação do motorista'];
 var IDX_VELOCIDADE = 3;
 /* Blocos da ficha (sec = índice) */
-var GATILHOS = ['Imediato (1ª ocorrência)', 'Nítido 1x', 'Nítido 2x', 'Nítido 3x', '30 s', '1 min', '3 eventos em 60 min'];
+var GATILHOS = ['Imediato (1ª ocorrência)', '30 s', '1 min', '3 eventos em 60 min'];
+var GRUPOS_EV = [['videotelemetria', 'Videotelemetria'], ['telemetria', 'Telemetria'], ['outros', 'Outros']];
+var TIPOS_CRIT = [['lista', 'Gatilho em lista'], ['limite_tempo', 'Limite (km/h) + tempo (s)'], ['via', 'Severidade da via (Grave/Gravíssimo)'], ['minutos', 'Minutos']];
+/* nomes antigos (fichas criadas antes do catálogo) -> id do catálogo */
+var EV_LEGADO = { 'Distração': 'distracao', 'Fadiga': 'fadiga', 'Uso de celular': 'celular', 'Excesso de velocidade': 'vel_via', 'Ultrapassagem de faixa contínua': 'faixa', 'Colisão': 'colisao',
+  'Obstrução de câmera': 'cam_outros', 'Sem cinto de segurança': 'cinto', 'Freada brusca': 'freada', 'Curva brusca': 'curva', 'Distância perigosa': 'distancia', 'Excesso de RPM': 'rpm',
+  'Motor ocioso': 'ociosidade', 'Permanência em ponto': 'permanencia', 'Sem identificação do motorista': 'semid' };
 var FROTAS = [['leve', 'Frota leve'], ['pesada', 'Frota pesada'], ['hibrida', 'Frota híbrida']];
 var BLOCOS = ['Referência (HubSpot)', 'Equipamentos enviados', 'Liberação no painel', 'Acesso à plataforma ONE',
   'Grupos de aviso', 'Eventos monitorados', 'Relatórios', 'Frota monitorada', 'Piloto (início e fim)'];
@@ -271,7 +284,13 @@ function equipTxt(c) {
   var l = EQUIPS.filter(function (e) { return c.equip[e] && +c.equip[e].qtd > 0; }).map(function (e) { return e + ' × ' + c.equip[e].qtd; });
   return l.length ? l.join(', ') : '';
 }
-function evVel(c) { return c.eventos.find(function (e) { return !e.custom && e.evento === 'Excesso de velocidade'; }); }
+function critOk(e) {
+  var t = e.tipo || 'lista';
+  if (t === 'limite_tempo') return (e.regras || []).some(function (r) { return +r.kmh > 0 && +r.seg > 0; });
+  if (t === 'via') return !!(e.via && (e.via.grave || e.via.gravissimo));
+  if (t === 'minutos') return +e.min > 0;
+  return !!(e.gatilho && String(e.gatilho).trim());
+}
 function eventosMon(c) { return c.eventos.filter(function (e) { return e.monitorar; }); }
 function gruposNomes(c) { return c.grupos.map(function (g) { return (g.nome || '').trim(); }).filter(Boolean); }
 
@@ -295,13 +314,11 @@ function itens(c) {
   var mon = eventosMon(c);
   add(5, 'Ao menos 1 evento marcado para monitorar', mon.length > 0);
   add(5, 'Todos os eventos monitorados com severidade (Leve/Grave/Gravíssimo)', mon.length > 0 && mon.every(function (e) { return e.sev; }));
-  add(5, 'Todos os eventos monitorados com gatilho definido', mon.length > 0 && mon.every(function (e) { return e.gatilho && String(e.gatilho).trim(); }));
+  add(5, 'Todos os eventos monitorados com gatilho / critério definido', mon.length > 0 && mon.every(critOk));
   add(5, 'Todos os eventos monitorados com ao menos 1 ação', mon.length > 0 && mon.every(function (e) { return e.acoes.some(function (a) { return a.t; }); }));
   var refs = [];
   c.eventos.forEach(function (e) { e.acoes.forEach(function (a) { if (a.t === 'grupo') refs.push(a.g); }); });
   if (refs.length) add(5, 'Ações de grupo apontam para um grupo cadastrado', refs.every(function (g) { return g && gruposNomes(c).indexOf(g) >= 0; }));
-  if (evVel(c) && evVel(c).monitorar)
-    add(5, 'Excesso de velocidade: ao menos 1 regra (via, % acima e severidade)', c.velocidade.some(function (r) { return r.pct && r.sev; }));
   var rl = c.relatorios || { tem: '', lista: [] }, rls = rl.lista || [];
   add(6, 'Relatórios personalizados respondido (Sim/Não)', rl.tem === 'sim' || rl.tem === 'nao');
   if (rl.tem === 'sim') {
@@ -427,11 +444,6 @@ function montarMensagens(clientes, hoje, opts) {
 
 </script>
 <script>
-/* ============ SUGESTÃO (da antiga Matriz de risco; só aplicada se você pedir) ============ */
-const SUGESTAO={'Distração':['Gravíssimo','grupo','3 eventos em 60 min'],'Fadiga':['Gravíssimo','motorista','Nítido 1x'],'Uso de celular':['Gravíssimo','grupo','Nítido 1x'],
- 'Excesso de velocidade':['Gravíssimo','grupo','Nítido 1x'],'Ultrapassagem de faixa contínua':['Gravíssimo','grupo','Nítido 1x'],'Colisão':['Gravíssimo','gestor','Imediato (1ª ocorrência)'],
- 'Obstrução de câmera':['Gravíssimo','gestor','Nítido 1x'],'Sem cinto de segurança':['Gravíssimo','grupo','Nítido 1x']};
-
 /* ============ UTILS ============ */
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -478,17 +490,34 @@ const STUB=(()=>{let db={clientes:[],hist:{},slack:{token:false,canal:'',gatilho
   async enviarTeste(){return{ok:false,erros:['Simulação local (?stub=1): Slack só funciona publicado no Vercel.']}}}})();
 
 /* ============ ESTADO E MODELO ============ */
-let S={eu:'',clientes:[]};
+let S={eu:'',clientes:[],catalogo:[],pendentes:0};
+let adminTab='acessos',solics=null,pedirAberto=false;
 let view='painel',filtro='Todos',busca='',fichaId=null,ganttAll=false,prev=null,notif=null;
 const versoes={},pendLogs={};
 const get=id=>S.clientes.find(c=>c.id===id);
-const novoEvento=nome=>({evento:nome,monitorar:false,sev:'',gatilho:'',gOutro:false,acoes:[{t:'',g:''},{t:'',g:''},{t:'',g:''}]});
+const catById=id=>(S.catalogo||[]).find(x=>x.id===id);
+const evNome=e=>{const ct=e.cat&&catById(e.cat);return ct?ct.nome:(e.evento||'')};
+const grupoDe=e=>{const ct=e.cat&&catById(e.cat);return ct?ct.grupo:'outros'};
+const novoEvento=nome=>({evento:nome,tipo:'lista',monitorar:false,sev:'',gatilho:'',gOutro:false,acoes:[{t:'',g:''},{t:'',g:''},{t:'',g:''}]});
+const novoEventoCat=ct=>{const e=novoEvento(ct.nome);e.cat=ct.id;e.tipo=ct.tipo;ajustaEv(e);return e};
+function ajustaEv(e){const ct=e.cat&&catById(e.cat);e.tipo=ct?ct.tipo:(e.tipo||'lista');
+  if(e.tipo==='limite_tempo'&&!Array.isArray(e.regras))e.regras=[{kmh:'',seg:''}];
+  if(e.tipo==='via'&&!e.via)e.via={grave:false,gravissimo:false};
+  if(e.tipo==='minutos'&&e.min===undefined)e.min=''}
+function aplicaPadrao(e,ct,g0){e.monitorar=true;e.sev=ct.sev||'';e.gatilho=ct.tipo==='lista'?(ct.gatilho||''):'';e.gOutro=false;
+  e.acoes=[0,1,2].map(k=>{const t=(ct.acoes||[])[k]||'';return{t,g:t==='grupo'?g0:''}});ajustaEv(e);
+  if(ct.tipo==='via')e.via={grave:ct.sev==='Grave',gravissimo:ct.sev==='Gravíssimo'};
+  if(ct.tipo==='minutos')e.min=ct.padraoMin||''}
+function resetEv(ev){ev.monitorar=false;ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}];
+  if(ev.regras)ev.regras=[{kmh:'',seg:''}];if(ev.via)ev.via={grave:false,gravissimo:false};if(ev.min!==undefined)ev.min=''}
+const ordEv=(x,y)=>{const gi=e=>GRUPOS_EV.findIndex(a=>a[0]===grupoDe(e));const o=e=>{const ct=e.cat&&catById(e.cat);return e.custom?9999:ct?ct.ordem:5000};return gi(x)-gi(y)||o(x)-o(y)};
+const ordCat=(x,y)=>{const gi=e=>GRUPOS_EV.findIndex(a=>a[0]===e.grupo);return gi(x)-gi(y)||(x.ordem-y.ordem)||x.nome.localeCompare(y.nome)};
 const descVazio=()=>({video:{tipo:'pct',valor:0,motivo:''},tele:{tipo:'pct',valor:0,motivo:''},pos:{tipo:'pct',valor:0,motivo:''}});
 function novoCliente(nome,extra={}){return Object.assign({
   id:uid(),nome,status:'Onboarding',responsavel:'',canalSlack:'',
   hubspot:{link:'',id:'',empresa:nome,responsavel:'',potencial:'',regiao:''},
   equip:Object.fromEntries(EQUIPS.map(e=>[e,{qtd:0}])),instalacao:'',painel:'',one:[],
-  eventos:EVENTOS_BASE.map(novoEvento),velocidade:[],frota:{todos:false,tipo:'',placas:''},grupos:[],relatorios:{tem:'',lista:[]},
+  eventos:(S.catalogo||[]).filter(x=>x.padrao&&!x.arquivado).map(novoEventoCat),velocidade:[],frota:{todos:false,tipo:'',placas:''},grupos:[],relatorios:{tem:'',lista:[]},
   inicio:'',fim:'',fimReal:'',resultado:'Em andamento',reuniaoPainel:'',notas:'',desconto:descVazio(),posicoes:0,logo:''},extra)}
 const LEGADO=['etapas','matriz','sideLetter','ultimoRepasse','usuarios','acesso','escopo','limiar','tolerancia','criticidadeConfirmada','frotaQtd','frotaIncompleta','modalidade','veiculos','precoManual','cnpj','liberadoComPendencias'];
 function normaliza(c){
@@ -501,7 +530,12 @@ function normaliza(c){
   if(!c.desconto||typeof c.desconto!=='object')c.desconto=descVazio();
   ['video','tele','pos'].forEach(k=>{if(!c.desconto[k])c.desconto[k]={tipo:'pct',valor:0,motivo:''}});
   if(!Array.isArray(c.eventos))c.eventos=b.eventos;
-  c.eventos.forEach(e=>{while(e.acoes.length<3)e.acoes.push({t:'',g:''});delete e.notificar;if(e.gOutro===undefined)e.gOutro=false;if(e.gatilho==='60 s')e.gatilho='1 min'});
+  c.eventos.forEach(e=>{while(e.acoes.length<3)e.acoes.push({t:'',g:''});delete e.notificar;if(e.gOutro===undefined)e.gOutro=false;if(e.gatilho==='60 s')e.gatilho='1 min';
+    if(/^Nítido/.test(e.gatilho||'')){e.gatilho='Imediato (1ª ocorrência)';e.gOutro=false}
+    if(!e.cat&&!e.custom&&EV_LEGADO[e.evento])e.cat=EV_LEGADO[e.evento];
+    const ct=e.cat&&catById(e.cat);if(ct)e.evento=ct.nome;ajustaEv(e)});
+  if((S.catalogo||[]).length)c.eventos=c.eventos.filter(e=>e.custom||!e.cat||catById(e.cat)||e.monitorar);
+  c.eventos.sort(ordEv);
   c.grupos.forEach(g=>{if(!Array.isArray(g.pessoas))g.pessoas=[];if(g.objetivo===undefined)g.objetivo=''});
   LEGADO.forEach(k=>delete c[k]);
   return c}
@@ -620,7 +654,7 @@ function render(){
   $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===view||(view==='ficha'&&b.dataset.view==='painel')));
   const em=new Set();S.clientes.forEach(c=>{[c.responsavel,...c.one.map(u=>u.email)].forEach(x=>x&&emailOk(x)&&em.add(x))});
   $('#emails').innerHTML=[...em].map(x=>`<option value="${esc(x)}">`).join('');
-  $('#main').innerHTML=({painel:vPainel,pilotos:vPilotos,precos:vPrecos,notif:vNotif,acessos:vAcessos,ficha:vFicha})[view]();
+  $('#main').innerHTML=({painel:vPainel,pilotos:vPilotos,precos:vPrecos,notif:vNotif,admin:vAdmin,ficha:vFicha})[view]();
   if(view==='ficha'&&histAberto)loadHist(get(fichaId));
 }
 function renderKeep(){const y=window.scrollY;render();window.scrollTo(0,y)}
@@ -769,16 +803,11 @@ function vFicha(c0){
       <div class="row-actions"><button class="btn ghost sm" data-addrow="grupos.${i}.pessoas">+ Pessoa</button><button class="btn ghost sm" data-delrow="grupos.${i}">Remover grupo</button></div></div>`).join('')}
     <div class="row-actions"><button class="btn ghost sm" data-addrow="grupos">+ Grupo</button></div></div>
 
-  ${blocoHead(c,5,'Informativo para configurar a Torre — esta matriz não dispara nada. Marcar um evento para monitorar significa que a Torre vai notificá-lo; defina a severidade, o gatilho e a ordem de escalonamento das ações (1ª, 2ª e 3ª).')}
-    <div class="row-actions noprint" style="margin:0 0 10px"><button class="btn ghost sm" data-act="evTodos">Marcar todos para monitorar</button><button class="btn ghost sm" data-act="evSugestao">Preencher com a sugestão (8 eventos de controle imediato)</button><button class="btn ghost sm" data-act="evLimpar">Limpar tudo</button></div>
-    <div class="tw"><table style="min-width:820px"><thead><tr><th>Monitorar</th><th>Evento</th><th>Severidade</th><th>Gatilho</th><th>1ª ação</th><th>2ª ação</th><th>3ª ação</th><th></th></tr></thead><tbody>
-    ${c.eventos.map((e,i)=>evRow(c,e,i,gn)).join('')}</tbody></table></div>
-    <div class="row-actions"><button class="btn ghost sm" data-addrow="eventos">+ Evento personalizado</button>${EVENTOS_BASE.some(n=>!c.eventos.some(e=>!e.custom&&e.evento===n))?`<select data-evrestore class="noprint" style="width:auto"><option value="">↺ Restaurar evento padrão…</option>${EVENTOS_BASE.filter(n=>!c.eventos.some(e=>!e.custom&&e.evento===n)).map(n=>`<option>${esc(n)}</option>`).join('')}</select>`:''}</div>
-    ${evVel(c)&&evVel(c).monitorar?`<h4 style="margin:16px 0 6px">Regras de excesso de velocidade</h4><div class="hint">Cada regra: em qual via/limite vale, quantos % acima da velocidade da via dispara, por quantos segundos e qual a severidade.</div>
-    <div class="tw"><table style="min-width:640px"><thead><tr><th>Via / limite (ex.: até 60 km/h, todas)</th><th>Acima de (% da velocidade da via)</th><th>Por (segundos)</th><th>Severidade</th><th></th></tr></thead><tbody>
-    ${c.velocidade.map((r,i)=>`<tr><td><input data-f="velocidade.${i}.via" value="${esc(r.via)}"></td><td><input type="number" min="0" max="100" data-f="velocidade.${i}.pct" value="${esc(r.pct)}"></td><td><input type="number" min="0" data-f="velocidade.${i}.seg" value="${esc(r.seg)}"></td>
-     <td><select class="sev sv${SEVS.indexOf(r.sev)}" data-f="velocidade.${i}.sev"><option value="">—</option>${SEVS.map(x=>`<option ${r.sev===x?'selected':''}>${x}</option>`).join('')}</select></td><td><button class="btn ghost sm" data-delrow="velocidade.${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="5"><div class="empty">Nenhuma regra.</div></td></tr>'}</tbody></table></div>
-    <div class="row-actions"><button class="btn ghost sm" data-addrow="velocidade">+ Regra de velocidade</button></div>`:''}</div>
+  ${blocoHead(c,5,'Informativo para configurar a Torre — esta matriz não dispara nada. Marcar um evento para monitorar significa que a Torre vai notificá-lo; defina a severidade, o gatilho ou critério e a ordem de escalonamento das ações (1ª, 2ª e 3ª). Os eventos padrão já vêm listados: remova o que não faz sentido, adicione da lista de eventos ou peça um evento novo ao admin.')}
+    <div class="row-actions noprint edit-only" style="margin:0 0 10px"><button class="btn ghost sm" data-act="evTodos">Marcar todos para monitorar</button><button class="btn ghost sm" data-act="evSugestao">Preencher com a sugestão (eventos padrão)</button><button class="btn ghost sm" data-act="evLimpar">Limpar tudo</button></div>
+    <div class="tw"><table style="min-width:900px"><thead><tr><th>Monitorar</th><th>Evento</th><th>Severidade</th><th>Gatilho / critério</th><th>1ª ação</th><th>2ª ação</th><th>3ª ação</th><th></th></tr></thead><tbody>${evTbody(c,gn)}</tbody></table></div>
+    <div class="row-actions noprint edit-only"><button class="btn ghost sm" data-addrow="eventos">+ Evento personalizado</button>${evAddSelect(c)}<button class="btn ghost sm" data-act="pedirToggle">Pedir novo evento ao admin</button></div>
+    ${pedirAberto?pedidoForm():''}</div>
 
   ${blocoHead(c,6,'Relatórios sob medida que o cliente quer receber. Não é obrigatório, mas é preciso responder se haverá ou não.')}
     <div class="radios"><span class="lbl">O cliente terá relatórios personalizados?</span>${[['sim','Sim'],['nao','Não']].map(([v,l])=>`<label class="rd"><input type="radio" name="reltem" data-f="relatorios.tem" value="${v}" ${c.relatorios.tem===v?'checked':''}> ${l}</label>`).join('')}</div>
@@ -832,19 +861,47 @@ function relatoriosHtml(c,gn){
       <label class="f" style="margin-top:10px">Observações<textarea data-f="${p}.obs">${esc(r.obs)}</textarea></label>
       <div class="row-actions"><button class="btn ghost sm" data-delrow="${p}">Remover relatório</button></div></div>`}).join('')}
   <div class="row-actions"><button class="btn ghost sm" data-addrow="relatorios.lista">+ Relatório personalizado</button></div>`}
+const tipoLista=e=>(e.tipo||'lista')==='lista';
+function critCell(c,e,i){
+  const p=`eventos.${i}`,t=e.tipo;
+  if(t==='limite_tempo'){const R=e.regras||[];return `<td class="gat">${R.map((r,j)=>`<div class="rg"><input type="number" min="1" inputmode="numeric" data-f="${p}.regras.${j}.kmh" value="${esc(r.kmh)}" placeholder="80"> km/h por <input type="number" min="1" inputmode="numeric" data-f="${p}.regras.${j}.seg" value="${esc(r.seg)}" placeholder="30"> s<button class="btn ghost sm" data-delrow="${p}.regras.${j}" title="Remover regra">✕</button></div>${+r.seg>60?'<div class="hint" style="color:var(--amber)">Tempo longo para um gatilho de velocidade; prefira poucos segundos.</div>':''}`).join('')}<button class="btn ghost sm noprint" data-addrow="${p}.regras">+ regra</button></td>`}
+  if(t==='via'){const v=e.via||{};return `<td class="gat"><label><input type="checkbox" data-chk="${p}.via.grave" ${v.grave?'checked':''}> Grave</label> <label><input type="checkbox" data-chk="${p}.via.gravissimo" ${v.gravissimo?'checked':''}> Gravíssimo</label></td>`}
+  return `<td class="gat">acima de <input type="number" min="1" inputmode="numeric" style="width:80px" data-f="${p}.min" value="${esc(e.min)}" placeholder="30"> min</td>`}
+function evTbody(c,gn){
+  const out=[];
+  GRUPOS_EV.forEach(([g,rot])=>{
+    const L=c.eventos.map((e,i)=>({e,i})).filter(x=>grupoDe(x.e)===g);
+    if(!L.length)return;
+    out.push(`<tr class="grp"><td colspan="8">${rot}<button class="btn ghost sm edit-only noprint" data-act="evGrupo" data-gr="${g}">marcar todos</button><button class="btn ghost sm edit-only noprint" data-act="evGrupoLimpar" data-gr="${g}">limpar</button></td></tr>`);
+    L.forEach(x=>out.push(evRow(c,x.e,x.i,gn)))});
+  return out.join('')||'<tr><td colspan="8"><div class="empty">Nenhum evento na ficha. Use "+ Adicionar evento…".</div></td></tr>'}
+function evAddSelect(c){
+  const tem=new Set(c.eventos.map(e=>e.cat).filter(Boolean));
+  const disp=(S.catalogo||[]).filter(x=>!x.arquivado&&!tem.has(x.id));
+  if(!disp.length)return '';
+  return `<select data-evadd class="noprint" style="width:auto"><option value="">+ Adicionar evento…</option>${GRUPOS_EV.map(([g,rot])=>{const l=disp.filter(x=>x.grupo===g);return l.length?`<optgroup label="${rot}">${l.map(x=>`<option value="${esc(x.id)}">${esc(x.nome)}</option>`).join('')}</optgroup>`:''}).join('')}</select>`}
+function pedidoForm(){return `<div class="card noprint" style="margin-top:10px;background:var(--indigo-50)"><h4 style="margin:0 0 8px">Pedir novo evento</h4><div class="hint">O pedido vai para o admin, que decide se o evento entra no catálogo (padrão ou lista de eventos).</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="in" id="pedNome" placeholder="Nome do evento" style="max-width:300px"><select class="in" id="pedGrupo" style="width:auto">${GRUPOS_EV.map(([g,r])=>`<option value="${g}">${r}</option>`).join('')}</select></div>
+  <label class="f" style="margin-top:8px">Observação<textarea id="pedObs" placeholder="O que deve ser detectado, exemplos, critério…"></textarea></label>
+  <div class="row-actions"><button class="btn" data-act="pedirEnviar">Enviar pedido</button><button class="btn ghost" data-act="pedirToggle">Cancelar</button></div></div>`}
 function evRow(c,e,i,gn){
-  const p=`eventos.${i}`;
+  const p=`eventos.${i}`;ajustaEv(e);
   const acao=(a,k)=>`<td><select data-f="${p}.acoes.${k}.t">${ACOES.map(([v,l])=>`<option value="${v}" ${a.t===v?'selected':''}>${l}</option>`).join('')}</select>${a.t==='grupo'?`<select data-f="${p}.acoes.${k}.g" style="margin-top:4px"><option value="">escolha o grupo…</option>${gn.map(g=>`<option value="${esc(g)}" ${a.g===g?'selected':''}>${esc(g)}</option>`).join('')}${a.g&&!gn.includes(a.g)?`<option value="${esc(a.g)}" selected>${esc(a.g)} (grupo removido)</option>`:''}</select>`:''}</td>`;
   return `<tr class="${e.monitorar?'':'off'}"><td class="c"><input type="checkbox" data-chk="${p}.monitorar" ${e.monitorar?'checked':''}></td>
-   <td>${e.custom?`<input data-f="${p}.evento" value="${esc(e.evento)}" placeholder="nome do evento">`:`<b>${esc(e.evento)}</b>`}</td>
+   <td>${e.custom?`<input data-f="${p}.evento" value="${esc(e.evento)}" placeholder="nome do evento"><span class="tag">personalizado</span>`:`<b>${esc(evNome(e))}</b>${e.cat&&(!catById(e.cat)||catById(e.cat).arquivado)?'<span class="tag warn">fora do catálogo</span>':''}`}</td>
    <td><select class="sev sv${SEVS.indexOf(e.sev)}" data-f="${p}.sev"><option value="">—</option>${SEVS.map(x=>`<option ${e.sev===x?'selected':''}>${x}</option>`).join('')}</select></td>
-   <td class="gat"><select data-gat="${i}"><option value="">—</option>${GATILHOS.map(x=>`<option value="${esc(x)}" ${!e.gOutro&&e.gatilho===x?'selected':''}>${x}</option>`).join('')}<option value="__outro" ${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?'selected':''}>Outro (digitar)…</option></select>${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?`<input style="margin-top:4px" data-f="${p}.gatilho" value="${esc(e.gatilho)}" placeholder="ex.: 7 s">`:''}</td>
+   ${tipoLista(e)?`<td class="gat"><select data-gat="${i}"><option value="">—</option>${GATILHOS.map(x=>`<option value="${esc(x)}" ${!e.gOutro&&e.gatilho===x?'selected':''}>${x}</option>`).join('')}<option value="__outro" ${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?'selected':''}>Outro (digitar)…</option></select>${e.gOutro||(e.gatilho&&!GATILHOS.includes(e.gatilho))?`<input style="margin-top:4px" data-f="${p}.gatilho" value="${esc(e.gatilho)}" placeholder="ex.: 7 s">`:''}</td>`:critCell(c,e,i)}
    ${e.acoes.map(acao).join('')}
    <td><button class="btn ghost sm" data-delrow="${p}" title="Excluir este evento da ficha do cliente">✕</button></td></tr>`;
 }
 async function loadHist(c){try{const h=await rpc('getHistorico',c.id);const b=$('#histBox');if(b)b.innerHTML=h.map(x=>`<div>${esc(x.txt)}<small>${esc(x.ts)} · ${esc(x.user)}</small></div>`).join('')||'<div class="muted">Sem registros.</div>'}catch(e){const b=$('#histBox');if(b)b.textContent='Erro: '+e.message}}
 
 /* ============ EXPORTAÇÃO DA FICHA ============ */
+function critTxt(e){const t=e.tipo||'lista';
+  if(t==='limite_tempo')return (e.regras||[]).filter(r=>r.kmh||r.seg).map(r=>`${r.kmh||'?'} km/h por ${r.seg||'?'} s`).join('; ')||'—';
+  if(t==='via')return [e.via&&e.via.grave?'Grave':'',e.via&&e.via.gravissimo?'Gravíssimo':''].filter(Boolean).join(' e ')||'—';
+  if(t==='minutos')return e.min?`acima de ${e.min} min`:'—';
+  return e.gatilho||'—'}
 function acoesTxt(e){const l=e.acoes.map((a,k)=>a.t?`${k+1}ª ${a.t==='grupo'?'Grupo de WhatsApp'+(a.g?' ('+a.g+')':''):a.t==='motorista'?'Ligar para o motorista':'Ligar para o gestor da frota'}`:'').filter(Boolean);return l.length?l.join(' → '):'—'}
 function fichaRows(c){
   const r=[['Bloco','Campo','Valor']],A=(b,k,v)=>r.push([b,k,v==null?'':v]),h=c.hubspot;
@@ -854,8 +911,7 @@ function fichaRows(c){
   b='3. Liberação no painel';A(b,'Painel liberado ('+EMAIL_CSO+')',c.painel==='sim'?'Sim':c.painel==='nao'?'Não':'—');
   b='4. Acesso à plataforma ONE';c.one.forEach(u=>A(b,u.nome,u.email));
   b='5. Grupos de aviso';c.grupos.forEach(g=>A(b,g.nome,`Objetivo: ${g.objetivo||'—'} | Pessoas: ${g.pessoas.map(p=>p.nome+' ('+p.telefone+')').join(', ')||'—'}`));
-  b='6. Eventos monitorados';c.eventos.filter(e=>e.monitorar).forEach(e=>A(b,e.evento,`Severidade: ${e.sev||'—'} | Gatilho: ${e.gatilho||'—'} | Ações: ${acoesTxt(e)}`));
-  c.velocidade.forEach((v,i)=>A('6. Excesso de velocidade','Regra '+(i+1),`Via: ${v.via||'—'} | Acima de ${v.pct||'—'}% | Por ${v.seg||'—'} s | Severidade: ${v.sev||'—'}`));
+  b='6. Eventos monitorados';c.eventos.filter(e=>e.monitorar).forEach(e=>A(b,evNome(e),`Severidade: ${e.sev||'—'} | Gatilho/critério: ${critTxt(e)} | Ações: ${acoesTxt(e)}`));
   b='7. Relatórios personalizados';A(b,'Terá relatórios',c.relatorios.tem==='sim'?'Sim':c.relatorios.tem==='nao'?'Não':'—');if(c.relatorios.tem==='sim')c.relatorios.lista.forEach((r,i)=>A(b,r.nome||'Relatório '+(i+1),`Conteúdo: ${r.conteudo||'—'} | Quando: ${relFreq(r)} | Período: ${relPeriodo(r)} | Canal: ${relCanal(r)} | Destinatários: ${r.dest||'—'} | Formato: ${r.formato||'—'}${r.obs?' | Obs.: '+r.obs:''}`));
   b='8. Frota monitorada';A(b,'Tipo',{leve:'Leve',pesada:'Pesada',hibrida:'Híbrida'}[c.frota.tipo]||'—');A(b,'Monitorar todos',c.frota.todos?'Sim':'Não');if(!c.frota.todos)A(b,'Placas',placasLista(c.frota.placas).join(' '));
   b='9. Piloto';A(b,'Início',fdate(c.inicio));A(b,'Fim previsto',fdate(c.fim));A(b,'Fim real',fdate(c.fimReal));A(b,'Resultado',c.resultado);A(b,'Reunião do painel',fdate(c.reuniaoPainel));
@@ -918,10 +974,10 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='ganttAll'){ganttAll=t.checked;render();return}
   const c=view==='ficha'&&get(fichaId);if(!c)return;
-  if(t.dataset.evrestore!==undefined){if(!t.value)return;c.eventos.push(novoEvento(t.value));c.eventos.sort((x,y)=>(x.custom?1000:EVENTOS_BASE.indexOf(x.evento))-(y.custom?1000:EVENTOS_BASE.indexOf(y.evento)));touch(c,'Evento restaurado: '+t.value);renderKeep();return}
+  if(t.dataset.evadd!==undefined){if(!t.value)return;const ct=catById(t.value);if(!ct)return;const n=novoEventoCat(ct);aplicaPadrao(n,ct,gruposNomes(c)[0]||'');c.eventos.push(n);c.eventos.sort(ordEv);touch(c,'Eventos: "'+ct.nome+'" adicionado da lista de eventos');renderKeep();return}
   if(t.dataset.gat!==undefined){const ev=c.eventos[+t.dataset.gat];
     if(t.value==='__outro'){ev.gOutro=true;ev.gatilho=''}else{ev.gOutro=false;ev.gatilho=t.value}
-    touch(c,`Eventos: gatilho de ${ev.evento||'evento'} → ${ev.gatilho||'(outro)'}`);renderKeep();return}
+    touch(c,`Eventos: gatilho de ${evNome(ev)||'evento'} → ${ev.gatilho||'(outro)'}`);renderKeep();return}
   if(t.id==='logoFile'){const f=t.files&&t.files[0];t.value='';if(f)logoUpload(c,f);return}
   const isChk=t.dataset.chk!==undefined,path=isChk?t.dataset.chk:t.dataset.f;if(!path)return;
   let val=isChk?t.checked:(t.dataset.n?(t.value===''?0:parseFloat(t.value)):t.value);
@@ -934,12 +990,12 @@ document.addEventListener('change',e=>{
   else if(t.dataset.mask==='placa'){val=t.value=placasLista(t.value).join('\n')}
   else if(t.type==='text'||t.tagName==='TEXTAREA'){if(t.dataset.mask!=='brl')val=t.value=t.value.trim()}
   const mEv=/^eventos\.(\d+)\.monitorar$/.exec(path);
-  if(mEv&&!val){const ev=c.eventos[+mEv[1]];const tem=ev.sev||ev.gatilho||ev.acoes.some(a=>a.t)||(ev.evento==='Excesso de velocidade'&&!ev.custom&&c.velocidade.length);
-    if(tem&&!confirm('Desmarcar "monitorar" apaga severidade, gatilho e ações desta linha. Continuar?')){t.checked=true;return}
-    ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}];if(ev.evento==='Excesso de velocidade'&&!ev.custom)c.velocidade=[]}
+  if(mEv&&!val){const ev=c.eventos[+mEv[1]];const tem=ev.sev||ev.gatilho||ev.acoes.some(a=>a.t)||(ev.regras&&ev.regras.some(r=>r.kmh||r.seg))||(ev.via&&(ev.via.grave||ev.via.gravissimo))||ev.min;
+    if(tem&&!confirm('Desmarcar "monitorar" apaga severidade, gatilho/critério e ações desta linha. Continuar?')){t.checked=true;return}
+    resetEv(ev)}
   const {o,last,old}=setPath(c,path,val);
   const top=path.split('.')[0],nomeCampo=last;let log=`${SECLOG[top]||'Cadastro'}: ${nomeCampo} → ${isChk?(val?'sim':'não'):(String(val).length>60||last==='placas'||last==='notas'?'(atualizado)':val||'(vazio)')}`;
-  let rerender=isChk||t.tagName==='SELECT'||t.type==='radio';
+  let rerender=isChk||t.tagName==='SELECT'||t.type==='radio'||/^eventos\.\d+\.regras\.\d+\.seg$/.test(path);
   if(path==='hubspot.link'){if(!c.hubspot.id){c.hubspot.id=hsId(val);const hi=$('#hsId');if(hi)hi.value=c.hubspot.id}log='Referência: link do HubSpot atualizado'}
   if(path==='nome'){log='Nome → '+val}
   if(/^eventos\.\d+\.acoes\.\d+\.t$/.test(path)&&val!=='grupo'){o.g=''}
@@ -958,8 +1014,52 @@ document.addEventListener('change',e=>{
 document.addEventListener('input',e=>{const t=e.target;if(calEl&&t===calAnc){const v=parseBR(t.value);if(v){calY=+v.slice(0,4);calM=+v.slice(5,7)-1;calDraw()}}
   if(t.dataset&&t.dataset.mask&&MASK[t.dataset.mask]){const v=MASK[t.dataset.mask](t.value);if(v!==t.value)t.value=v}
   if(e.target.id==='busca'){busca=e.target.value;const pos=e.target.selectionStart;render();const b=$('#busca');b.focus();b.setSelectionRange(pos,pos)}});
+const badge=()=>{const b=$('#badgeSol');if(b){b.textContent=S.pendentes||'';b.hidden=!S.pendentes}};
+function adminAbre(){adminCarrega()}
+function adminCarrega(){if(adminTab==='acessos'&&!acessos)carregaAcessos();if(adminTab==='solic')carregaSolic();if(adminTab==='slack'&&!notif)carregaNotif();if(adminTab==='eventos')recarregaCatalogo()}
+async function recarregaCatalogo(){try{S.catalogo=await rpc('getCatalogo');if(view==='admin')render()}catch(e){setState('Erro: '+e.message,true)}}
+async function carregaSolic(){try{solics=await rpc('listarSolicitacoes');S.pendentes=solics.filter(x=>x.status==='pendente').length;badge();if(view==='admin')render()}catch(e){setState('Erro: '+e.message,true)}}
+function vAdmin(){
+  if(S.papel!=='admin')return '<div class="card"><p class="muted">Somente administradores.</p></div>';
+  const T=[['acessos','Acessos'],['eventos','Eventos monitorados'],['solic','Solicitações'+(S.pendentes?` <span class="badge">${S.pendentes}</span>`:'')],['slack','Notificações Slack']];
+  const body=adminTab==='acessos'?vAcessos():adminTab==='eventos'?vCatalogo():adminTab==='solic'?vSolic():vNotif();
+  return `<div class="subtabs">${T.map(([k,l])=>`<button data-act="adtab" data-t="${k}" class="${adminTab===k?'on':''}">${l}</button>`).join('')}</div>${body}`}
+function vCatalogo(){
+  const L=(S.catalogo||[]).slice().sort(ordCat);
+  const op=(arr,v)=>arr.map(([a,b])=>`<option value="${esc(a)}" ${a===v?'selected':''}>${esc(b)}</option>`).join('');
+  const row=ct=>{const id=esc(ct.id),at=f=>`data-catid="${id}" data-catf="${f}"`;
+    const sv='<option value="">—</option>'+SEVS.map(x=>`<option ${ct.sev===x?'selected':''}>${x}</option>`).join('');
+    const gt=ct.tipo==='lista'?`<select ${at('gatilho')}><option value="">—</option>${GATILHOS.map(x=>`<option ${ct.gatilho===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`:ct.tipo==='minutos'?`<input type="number" min="1" style="width:70px" ${at('padraoMin')} value="${esc(ct.padraoMin||'')}" placeholder="30"> min`:'<span class="muted">preenchido na ficha</span>';
+    const ac=k=>`<select ${at('acao'+k)}>${ACOES.map(([v,l])=>`<option value="${v}" ${(ct.acoes||[])[k]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+    return `<tr class="${ct.arquivado?'off':''}"><td><input type="text" class="in" style="min-width:210px" ${at('nome')} value="${esc(ct.nome)}">${ct.arquivado?'<span class="tag warn">arquivado</span>':''}</td>
+    <td><select ${at('grupo')}>${op(GRUPOS_EV,ct.grupo)}</select></td><td style="text-align:center"><input type="checkbox" ${at('padrao')} ${ct.padrao?'checked':''}></td>
+    <td><select ${at('tipo')}>${op(TIPOS_CRIT,ct.tipo)}</select></td><td><select ${at('sev')}>${sv}</select></td><td>${gt}</td><td>${ac(0)}</td><td>${ac(1)}</td><td>${ac(2)}</td>
+    <td><input type="number" class="in" style="width:64px" ${at('ordem')} value="${ct.ordem||0}"></td>
+    <td style="white-space:nowrap">${ct.arquivado?`<button class="btn ghost sm" data-act="catReativar" data-id="${id}">Reativar</button> `:''}<button class="btn danger sm" data-act="catDel" data-id="${id}" title="Excluir do catálogo">✕</button></td></tr>`};
+  const rows=GRUPOS_EV.map(([g,rot])=>`<tr class="grp"><td colspan="11">${rot}<button class="btn ghost sm" data-act="catAdd" data-gr="${g}">+ Evento</button></td></tr>`+L.filter(x=>x.grupo===g).map(row).join('')).join('');
+  return `<div class="card cat"><h3>Eventos monitorados — catálogo</h3><p class="muted">Define o que vem preenchido nas fichas novas (<b>Padrão</b>) e o que fica na lista de eventos para os usuários adicionarem. Mudar o nome vale para todas as fichas; os demais campos valem só para fichas novas e para o botão "Preencher com a sugestão". Excluir um evento em uso o arquiva (continua nas fichas que o usam).</p>
+  <div class="tw"><table style="min-width:1100px"><thead><tr><th>Evento</th><th>Grupo</th><th>Padrão</th><th>Tipo de critério</th><th>Severidade</th><th>Gatilho / minutos</th><th>1ª ação</th><th>2ª ação</th><th>3ª ação</th><th>Ordem</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`}
+function vSolic(){
+  if(!solics)return '<div class="card"><p class="muted">Carregando…</p></div>';
+  const P=solics.filter(x=>x.status==='pendente'),H=solics.filter(x=>x.status!=='pendente').slice(0,30);
+  const card=s=>`<div class="card" style="margin-bottom:10px"><b>${esc(s.nome)}</b> <span class="muted">· pedido por ${esc(s.por||'?')}${s.cliente?' · cliente '+esc(s.cliente):''} · ${esc(s.em)}</span>${s.obs?`<p style="margin:6px 0">${esc(s.obs)}</p>`:''}
+   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><input class="in" id="sn${s.id}" value="${esc(s.nome)}" style="max-width:280px"><select class="in" id="sg${s.id}" style="width:auto">${GRUPOS_EV.map(([g,r])=>`<option value="${g}" ${s.grupo===g?'selected':''}>${r}</option>`).join('')}</select>
+   <label><input type="checkbox" id="sp${s.id}"> Padrão (vem preenchido)</label>${s.clienteId?`<label><input type="checkbox" id="sf${s.id}" checked> Adicionar na ficha de ${esc(s.cliente||'quem pediu')}</label>`:''}
+   <button class="btn" data-act="solOk" data-id="${s.id}">Aprovar</button><button class="btn danger" data-act="solNo" data-id="${s.id}">Recusar</button></div></div>`;
+  return `<div class="card"><h3>Solicitações de eventos</h3><p class="muted">Pedidos feitos pelos usuários nas fichas. Aprovar cria o evento no catálogo (padrão ou lista de eventos).</p>${P.map(card).join('')||'<div class="empty">Nenhum pedido pendente.</div>'}
+  ${H.length?`<h4 style="margin:16px 0 6px">Resolvidos</h4><table><tbody>${H.map(s=>`<tr><td>${esc(s.nome)}</td><td>${s.status==='aprovada'?'Aprovada':'Recusada'}${s.motivo?' — '+esc(s.motivo):''}</td><td class="muted">${esc(s.por||'')} · ${esc(s.em)}</td></tr>`).join('')}</tbody></table>`:''}</div>`}
+document.addEventListener('change',async e=>{const t=e.target;if(!t.dataset||t.dataset.catid===undefined)return;
+  const ct=(S.catalogo||[]).find(x=>x.id===t.dataset.catid);if(!ct)return;const f=t.dataset.catf,old=JSON.stringify(ct);
+  if(f==='padrao')ct.padrao=t.checked;
+  else if(/^acao\d$/.test(f)){ct.acoes=(ct.acoes||['','','']).slice();ct.acoes[+f[4]]=t.value}
+  else if(f==='ordem')ct.ordem=parseInt(t.value||'0',10)||0;
+  else if(f==='nome'){const v=t.value.trim();if(!v){t.value=ct.nome;return}ct.nome=v}
+  else ct[f]=t.value;
+  if(f==='tipo'){if(ct.tipo!=='lista')ct.gatilho='';if(ct.tipo!=='minutos')ct.padraoMin=''}
+  try{await rpc('salvarCatalogo',ct);toast('Catálogo atualizado')}catch(err){Object.assign(ct,JSON.parse(old));toast('Erro: '+err.message)}
+  render()});
 let acessos=null;
-async function carregaAcessos(){try{acessos=await rpc('listarAcessos');if(view==='acessos')render()}catch(e){setState('Erro: '+e.message,true)}}
+async function carregaAcessos(){try{acessos=await rpc('listarAcessos');if(view==='admin')render()}catch(e){setState('Erro: '+e.message,true)}}
 function vAcessos(){
   if(S.papel!=='admin')return '<div class="card"><p class="muted">Somente administradores.</p></div>';
   const L=acessos;
@@ -971,27 +1071,27 @@ function vAcessos(){
   <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="in" id="acEmail" type="email" placeholder="email@empresa.com" style="max-width:300px"><input class="in" id="acNome" placeholder="Nome (opcional)" style="max-width:220px"><select class="in" id="acPapel" style="width:auto"><option value="leitor">Leitor</option><option value="editor">Editor</option></select><button class="btn" data-act="acAdd">Liberar acesso</button></div></div>`}
 async function acSalvar(email,papel,ativo,nome){try{await rpc('salvarAcesso',email,nome||'',papel,ativo);await carregaAcessos();toast('Acesso atualizado')}catch(e){setState('Erro: '+e.message,true);toast(e.message)}}
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.acpapel){const u=(acessos||[]).find(x=>x.email===t.dataset.acpapel);if(u)acSalvar(u.email,t.value,u.ativo,u.nome)}});
-async function carregaNotif(){try{notif=await rpc('getNotificacoes');if(view==='notif')render()}catch(e){setState('Erro: '+e.message,true)}}
+async function carregaNotif(){try{notif=await rpc('getNotificacoes');if(view==='admin'||view==='notif')render()}catch(e){setState('Erro: '+e.message,true)}}
 document.addEventListener('click',async e=>{
   const t=e.target.closest('[data-open],[data-view],[data-filtro],[data-act],[data-addrow],[data-delrow],[data-goto]');
   if(!t)return;const d=t.dataset,c=view==='ficha'&&get(fichaId);
   if(view==='precos'&&simDirty()&&(d.open||(d.view&&d.view!=='precos')||d.act==='newClient')){if(!await guardaSim())return}
   if(d.open){openFicha(d.open,d.goto);return}
   if(d.goto!==undefined&&!d.open){scrollBloco(+d.goto);return}
-  if(d.view){view=d.view;if(view==='precos')simLoad(precoCli);render();if(view==='notif'&&!notif)carregaNotif();if(view==='acessos')carregaAcessos();return}
+  if(d.view){view=d.view;if(view==='precos')simLoad(precoCli);render();if(view==='admin')adminAbre();return}
   if(d.filtro){filtro=d.filtro;render();return}
   if(d.addrow&&c){const path=d.addrow,arr=resolve(c,path),last=path.split('.').pop();
     if(last==='one')arr.push({nome:'',email:''});
     else if(last==='grupos')arr.push({nome:'',objetivo:'',pessoas:[{nome:'',telefone:''}]});
     else if(last==='pessoas')arr.push({nome:'',telefone:''});
-    else if(last==='velocidade')arr.push({via:'',pct:'',seg:'',sev:''});
+    else if(last==='regras')arr.push({kmh:'',seg:''});
     else if(last==='eventos'){const n=novoEvento('');n.custom=true;n.monitorar=true;arr.push(n)}
     else if(last==='lista')arr.push(novoRel());
     touch(c,'Linha adicionada ('+last+')');renderKeep();return}
   if(d.delrow&&c){const k=d.delrow.split('.'),idx=+k.pop(),arr=resolve(c,k.join('.')),last=k[k.length-1];
     if(last==='grupos'){const g=arr[idx];if(!confirm(`Remover o grupo "${g.nome||'sem nome'}"?`))return;c.eventos.forEach(ev=>ev.acoes.forEach(a=>{if(a.t==='grupo'&&a.g===g.nome)a.g=''}))}
     if(last==='lista'){const r=arr[idx];if(!confirm(`Remover o relatório "${r.nome||'sem nome'}"?`))return;arr.splice(idx,1);touch(c,'Relatório removido: '+(r.nome||'sem nome'));renderKeep();return}
-    if(last==='eventos'){const ev=arr[idx];if(!confirm(`Excluir o evento "${ev.evento||'sem nome'}" da ficha deste cliente?`))return;if(ev.evento==='Excesso de velocidade'&&!ev.custom)c.velocidade=[];arr.splice(idx,1);touch(c,'Evento excluído: '+(ev.evento||'sem nome'));renderKeep();return}
+    if(last==='eventos'){const ev=arr[idx];if(!confirm(`Excluir o evento "${evNome(ev)||'sem nome'}" da ficha deste cliente?`))return;arr.splice(idx,1);touch(c,'Evento excluído: '+(evNome(ev)||'sem nome'));renderKeep();return}
     arr.splice(idx,1);touch(c,'Linha removida ('+last+')');renderKeep();return}
   const a=d.act;
   if(a==='simular'&&c){simLoad(c.id);view='precos';render();window.scrollTo(0,0);return}
@@ -999,6 +1099,19 @@ document.addEventListener('click',async e=>{
   if(a==='simVoltar'){if(simDirty()&&!confirm('Descartar as alterações e voltar para o cliente?'))return;openFicha(precoCli);return}
   if(a==='saveBack'){await saveAndBack(c)}
   if(a==='sair'){await TDCAuth.signOut();toLogin();return}
+  if(a==='adtab'){adminTab=d.t;render();adminCarrega();return}
+  if(a==='catAdd'){const nome=(prompt('Nome do novo evento:')||'').trim();if(!nome)return;
+    const L=(S.catalogo||[]).filter(x=>x.grupo===d.gr);const it={id:'c'+Date.now().toString(36),nome,grupo:d.gr,padrao:false,tipo:'lista',sev:'',gatilho:'',acoes:['','',''],padraoMin:'',ordem:(L.reduce((m,x)=>Math.max(m,x.ordem||0),0)+10),arquivado:false};
+    try{await rpc('salvarCatalogo',it);S.catalogo.push(it);toast('Evento criado');render()}catch(err){toast('Erro: '+err.message)}return}
+  if(a==='catDel'){const ct=catById(d.id);if(!ct||!confirm('Excluir "'+ct.nome+'" do catálogo?\n\nSe alguma ficha já monitora este evento, ele será apenas arquivado.'))return;
+    try{const r=await rpc('removerCatalogo',ct.id);if(r==='excluido'){S.catalogo=S.catalogo.filter(x=>x.id!==ct.id);toast('Evento excluído')}else{ct.arquivado=true;toast('Em uso em fichas: arquivado')}render()}catch(err){toast('Erro: '+err.message)}return}
+  if(a==='catReativar'){const ct=catById(d.id);if(!ct)return;ct.arquivado=false;try{await rpc('salvarCatalogo',ct);render()}catch(err){ct.arquivado=true;toast('Erro: '+err.message)}return}
+  if(a==='solOk'){const id=+d.id,nome=($('#sn'+id).value||'').trim();if(!nome){toast('Informe o nome');return}
+    const add=$('#sf'+id)?$('#sf'+id).checked:false,catId='c'+Date.now().toString(36);
+    try{await rpc('salvarCatalogo',{id:catId,nome,grupo:$('#sg'+id).value,padrao:$('#sp'+id).checked,tipo:'lista',sev:'',gatilho:'',acoes:['','',''],padraoMin:'',ordem:900,arquivado:false});
+      await rpc('resolverSolicitacao',id,'aprovada','',catId,add);toast('Pedido aprovado');await carregaSolic();S.catalogo=await rpc('getCatalogo');if(add)await carregaTudo();else render()}catch(err){toast('Erro: '+err.message)}return}
+  if(a==='solNo'){const m=prompt('Motivo da recusa (opcional):');if(m===null)return;
+    try{await rpc('resolverSolicitacao',+d.id,'recusada',m||'',null,false);toast('Pedido recusado');await carregaSolic()}catch(err){toast('Erro: '+err.message)}return}
   if(a==='acAdd'){const em=($('#acEmail').value||'').trim().toLowerCase();if(!emailOk(em)){toast('E-mail inválido');return}acSalvar(em,$('#acPapel').value,true,($('#acNome').value||'').trim());return}
   if(a==='acToggle'){const u=(acessos||[]).find(x=>x.email===d.em);if(u)acSalvar(u.email,u.papel,!u.ativo,u.nome);return}
   if(a==='acDel'){if(!confirm('Remover o acesso de '+d.em+'?'))return;try{await rpc('removerAcesso',d.em);await carregaAcessos()}catch(err){toast(err.message)}return}
@@ -1011,11 +1124,16 @@ document.addEventListener('click',async e=>{
   if(a==='histShow'){histAberto=true;renderKeep()}
   if(a==='histHide'){histAberto=false;renderKeep()}
   if(a==='evTodos'){c.eventos.forEach(ev=>ev.monitorar=true);touch(c,'Eventos: todos marcados para monitorar');renderKeep()}
-  if(a==='evLimpar'){if(!confirm('Limpar severidade, gatilho e ações de todos os eventos?'))return;c.eventos.forEach(ev=>{ev.monitorar=false;ev.sev='';ev.gatilho='';ev.gOutro=false;ev.acoes=[{t:'',g:''},{t:'',g:''},{t:'',g:''}]});touch(c,'Eventos: matriz limpa');renderKeep()}
-  if(a==='evSugestao'){if(!confirm('Marcar os 8 eventos de controle imediato e preencher severidade, gatilho e 1ª ação com a sugestão da matriz padrão? Isso substitui o que já está nesses eventos.'))return;
+  if(a==='evLimpar'){if(!confirm('Limpar severidade, gatilho/critério e ações de todos os eventos?'))return;c.eventos.forEach(resetEv);touch(c,'Eventos: matriz limpa');renderKeep()}
+  if(a==='evGrupo'){c.eventos.filter(e=>grupoDe(e)===d.gr).forEach(e=>e.monitorar=true);touch(c,'Eventos: grupo '+d.gr+' marcado para monitorar');renderKeep()}
+  if(a==='evGrupoLimpar'){if(!confirm('Limpar severidade, gatilho/critério e ações dos eventos deste grupo?'))return;c.eventos.filter(e=>grupoDe(e)===d.gr).forEach(resetEv);touch(c,'Eventos: grupo '+d.gr+' limpo');renderKeep()}
+  if(a==='evSugestao'){if(!confirm('Marcar os eventos padrão do catálogo e preencher severidade, gatilho/critério e ações com os padrões? Isso substitui o que já está nesses eventos.'))return;
     const g0=gruposNomes(c)[0]||'';
-    c.eventos.forEach(ev=>{const s=SUGESTAO[ev.evento];if(!s)return;ev.monitorar=true;ev.sev=s[0];ev.gatilho=s[2];ev.gOutro=!GATILHOS.includes(s[2]);ev.acoes=[{t:s[1],g:s[1]==='grupo'?g0:''},{t:'',g:''},{t:'',g:''}]});
-    touch(c,'Eventos: sugestão da matriz padrão aplicada');renderKeep()}
+    (S.catalogo||[]).filter(x=>x.padrao&&!x.arquivado).forEach(ct=>{let ev=c.eventos.find(e=>e.cat===ct.id);if(!ev){ev=novoEventoCat(ct);c.eventos.push(ev)}aplicaPadrao(ev,ct,g0)});
+    c.eventos.sort(ordEv);touch(c,'Eventos: padrões do catálogo aplicados');renderKeep()}
+  if(a==='pedirToggle'){pedirAberto=!pedirAberto;renderKeep();return}
+  if(a==='pedirEnviar'){const nome=($('#pedNome').value||'').trim();if(!nome){toast('Informe o nome do evento');return}
+    try{await rpc('pedirEvento',c.id,c.nome,nome,$('#pedGrupo').value,($('#pedObs').value||'').trim());pedirAberto=false;toast('Pedido enviado ao admin');renderKeep()}catch(err){toast('Erro: '+err.message)}return}
   if(a==='fichaCsv')dl(`ficha-${c.nome}.csv`,toCsv(fichaRows(c)));
   if(a==='proposta'&&c){abrirProposta(c);return}
   if(a==='print')window.print();
@@ -1035,18 +1153,20 @@ function dl(name,txt){const a=document.createElement('a');a.href=URL.createObjec
 window.addEventListener('beforeunload',e=>{if(Object.values(salvando).some(Boolean)||Object.values(pendLogs).some(l=>l&&l.length)||simDirty()){e.preventDefault();e.returnValue=''}});
 
 /* ============ INÍCIO ============ */
-(async()=>{
+async function carregaTudo(){
   try{
     const b=await rpc('getBootstrap');
+    S.catalogo=b.catalogo||[];S.pendentes=b.pendentes||0;
     S.eu=b.eu;S.nome=b.nome||b.eu;S.papel=b.papel||'leitor';S.avatar=b.avatar||'';
     document.body.classList.add(S.papel);
     const w=$('#who');w.hidden=false;
     w.innerHTML=(S.avatar?`<img src="${esc(S.avatar)}" alt="" referrerpolicy="no-referrer">`:`<div class="ini">${esc((S.nome||'?')[0].toUpperCase())}</div>`)+`<div class="nm"><b>${esc(S.nome)}</b><span>${esc(S.papel)}</span></div>`;
-    if(S.papel==='admin'){$('#navAcessos').hidden=false;$('#navNotif').hidden=false}
+    if(S.papel==='admin'){$('#navAdmin').hidden=false;badge()}
     S.clientes=b.clientes.map(c=>{normaliza(c);versoes[c.id]=c._versao;return c});
     setState('Conectado');render();
   }catch(e){setState('Erro ao carregar',true);$('#main').innerHTML=`<div class="card"><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
-})();
+}
+carregaTudo();
 </script>
 <script src="proposta.js"></script>
 </body>
